@@ -626,7 +626,7 @@ def model_version_download(request, pk):
 def deployments(request):
     org = org_of(request)
     if request.method == 'GET':
-        return Response([_ser_dep(d) for d in Deployment.objects.filter(organization=org).exclude(status='deleted').select_related('model', 'active_version')])
+        return Response([_ser_dep(d) for d in Deployment.objects.filter(organization=org).exclude(status='deleted').select_related('model', 'active_version').order_by('-id')])
     mv = _get(ModelVersion, request, pk=request.data.get('model_version_id'))
     if mv.status != 'ready':
         raise ValidationError({'detail': 'model version is archived'})
