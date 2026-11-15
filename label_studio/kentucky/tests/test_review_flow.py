@@ -88,3 +88,30 @@ def test_clean_polygon_repairs_self_crossing():
     assert clean_polygon([[0, 0], [5, 0], [5, 5], [0, 5]], 100, 100) == [[0.0, 0.0], [5.0, 0.0], [5.0, 5.0], [0.0, 5.0]]
     clipped = clean_polygon([[-20, -20], [50, -20], [50, 50], [-20, 50]], 30, 30)
     assert max(x for x, _ in clipped) <= 30 and min(y for _, y in clipped) >= 0
+
+
+@pytest.mark.django_db
+def test_find_more_like_this_on_a_scan(client_a, org_a):
+    """Mark one door on a scan: every other door is suggested, nothing else, from the marked example alone."""
+    from kentucky.samples import factories as F
+    from kentucky.samples import synthetic as syn
+
+    user, org = org_a
+    ds = F.make_dataset(org, user)
+    plan, _, sheet = F.upload_plan(ds, user, 96, 'png')
+    doors = [[[x * 2, y * 2] for x, y in o['polygon']] for o in plan.objects.values() if o['label'] == 'door']
+    r = client_a.post(f'/api/ka/sheets/{sheet.id}/find-similar/', {'polygon': doors[0], 'label': 'door'}, format='json')
+    assert r.status_code == 200, r.data
+    sugg = client_a.get(f'/api/ka/sheets/{sheet.id}/review/').data['suggestions']
+    bb = lambda P: (min(q[0] for q in P), min(q[1] for q in P), max(q[0] for q in P), max(q[1] for q in P))  # noqa: E731
+
+    def iou(a, b):
+        iw, ih = max(0, min(a[2], b[2]) - max(a[0], b[0])), max(0, min(a[3], b[3]) - max(a[1], b[1]))
+        return iw * ih / ((a[2] - a[0]) * (a[3] - a[1]) + (b[2] - b[0]) * (b[3] - b[1]) - iw * ih)
+
+    gt = [bb(d) for d in doors[1:]]
+    found = sum(any(iou(g, bb(s['polygon'])) >= 0.3 for s in sugg) for g in gt)
+    wrong = sum(not any(iou(g, bb(s['polygon'])) >= 0.3 for g in gt) for s in sugg)
+    assert all(s['label'] == 'door' and s['source'] == 'similar' for s in sugg)
+    assert found >= 0.8 * len(gt) and wrong <= 1
+    assert client_a.post(f'/api/ka/sheets/{sheet.id}/find-similar/', {'polygon': [[5, 5], [6, 5], [6, 6]], 'label': 'door'}, format='json').status_code == 400

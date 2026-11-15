@@ -135,7 +135,8 @@ def sheet_review(request, pk):
         'classes': [c for c in tax.classes if c['kind'] == 'cv' and c['name'] != 'unknown'],
         'annotation': {'id': ann.id, 'result': ann.result} if ann else None,
         'suggestions': [{'id': p.id, 'label': p.payload['label'], 'polygon': p.payload['polygon'], 'confidence': p.confidence,
-                         'source': 'model' if p.model_version_id else 'drawing', 'explanation': p.explanation} for p in pend],
+                         'source': 'model' if p.model_version_id else 'similar' if p.agent == LA.SIMILAR_AGENT else 'drawing',
+                         'explanation': p.explanation} for p in pend],
         'decided': {'kept': dec.get('accepted', 0) + dec.get('modified', 0), 'dismissed': dec.get('rejected', 0) + dec.get('dismissed', 0)},
         'can_find_more': bool(s.has_vector or has_model),
         'user': {'id': request.user.id, 'email': request.user.email},
@@ -189,6 +190,22 @@ def sheet_find_more(request, pk):
     audit(request, 'review.find_more', s, created=len(props), duplicates=dup, source=source, models=[mv.id for mv, _ in plan])
     return Response({'created': len(props) - dup, 'duplicates': dup, 'source': source,
                      'model': ('your models — ' + '; '.join(used)) if used else None})
+
+
+@api_view(['POST'])
+def sheet_find_similar(request, pk):
+    """'Find more like this': search the sheet for repeats of the item the user marked."""
+    s = _get(Sheet, request, pk=pk)
+    poly, label = request.data.get('polygon'), request.data.get('label')
+    if not isinstance(poly, list) or len(poly) < 3 or not label:
+        raise ValidationError({'detail': 'polygon (3+ points) and label are required'})
+    try:
+        props = LA.find_similar(s, s.dataset, poly, label)
+    except ValueError as e:
+        raise ValidationError({'detail': str(e)})
+    dup = _dedupe(s, request.user)
+    audit(request, 'review.find_similar', s, created=len(props), duplicates=dup, label=label)
+    return Response({'created': len(props) - dup, 'duplicates': dup, 'label': label})
 
 
 @api_view(['POST'])

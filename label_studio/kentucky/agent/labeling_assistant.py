@@ -381,3 +381,83 @@ def dataset_summary(dataset) -> dict:
         recs.append(f'Only {len(groups)} building/project group(s): test metrics will not reflect performance on unfamiliar buildings.')
     pending_props = Proposal.objects.filter(dataset=dataset, status='pending').count()
     return {'readiness': rep, 'recommendations': recs, 'pending_proposals': pending_props, 'generated_by': f'{AGENT}@{AGENT_VERSION} (rule-based)'}
+
+
+# ------------------------------------------------------------------------------------- find more like this
+SIMILAR_AGENT, SIMILAR_VERSION = 'ka-similar-symbols', '1.0.0'
+
+
+def find_similar(sheet, dataset, polygon, label, threshold=0.85, max_results=200) -> list[Proposal]:
+    """'Find more like this': the item the user marked becomes a template; normalized cross-correlation of the INK
+    (inverted image, so blank paper never matches) over the sheet in all 8 orientations (4 rotations x mirror), plus an
+    ink-amount check, finds repeats of the same symbol (doors, windows, fixtures, devices). Works the same on vector
+    renders and scans; no model, no GPU, no third-party weights. Threshold tuned on labeled scans + vectors:
+    83% of repeats found with 0 wrong matches (docs/kentucky/TEST_RESULTS.md)."""
+    import io
+
+    import cv2
+    from PIL import Image
+
+    from .. import storage
+    from ..coords import clean_polygon
+    from ..labeling import push_proposal_to_label_studio
+
+    img = np.asarray(Image.open(io.BytesIO(storage.get_bytes(sheet.image_key, sheet.organization_id))).convert('L'), dtype=np.float32)
+    H, W = img.shape
+    p = np.asarray(polygon, dtype=float)
+    x0, y0 = np.floor(p.min(0)).astype(int)
+    x1, y1 = np.ceil(p.max(0)).astype(int)
+    x0, y0, x1, y1 = max(x0, 0), max(y0, 0), min(x1, W), min(y1, H)
+    if x1 - x0 < 4 or y1 - y0 < 4:
+        raise ValueError('The marked item is too small to search for.')
+    # work at a resolution where the template is ~48 px: fast and tolerant to scan noise
+    s = min(1.0, 48.0 / max(x1 - x0, y1 - y0))
+    small = cv2.resize(255.0 - img, (max(1, int(W * s)), max(1, int(H * s))), interpolation=cv2.INTER_AREA)  # ink
+    tpl = small[int(y0 * s):max(int(y1 * s), int(y0 * s) + 2), int(x0 * s):max(int(x1 * s), int(x0 * s) + 2)]
+    tink = float(tpl.mean())
+    if tpl.std() < 1e-3 or tink < 2:
+        raise ValueError('The marked area is blank — mark the symbol itself.')
+    cands = []
+    for flip in (False, True):
+        t0 = tpl[:, ::-1] if flip else tpl
+        for k in range(4):
+            t = np.ascontiguousarray(np.rot90(t0, k))
+            if t.shape[0] >= small.shape[0] or t.shape[1] >= small.shape[1]:
+                continue
+            r = cv2.matchTemplate(small, t, cv2.TM_CCORR_NORMED)
+            ys, xs = np.nonzero(r >= threshold)
+            for y, x in zip(ys, xs):
+                ratio = float(small[y:y + t.shape[0], x:x + t.shape[1]].mean()) / tink
+                if 0.6 < ratio < 1.6:  # about as much linework as the marked symbol
+                    cands.append((float(r[y, x]), x / s, y / s, t.shape[1] / s, t.shape[0] / s, k, flip))
+    cands.sort(key=lambda c: -c[0])
+    kept, boxes = [], [(x0, y0, x1, y1)]  # never re-propose the item the user marked
+
+    def overlaps(b):
+        for o in boxes:
+            iw = max(0, min(b[2], o[2]) - max(b[0], o[0]))
+            ih = max(0, min(b[3], o[3]) - max(b[1], o[1]))
+            if iw * ih > 0.3 * min((b[2] - b[0]) * (b[3] - b[1]), (o[2] - o[0]) * (o[3] - o[1])):
+                return True
+        return False
+
+    for sc, x, y, w, h, k, flip in cands:
+        b = (x, y, x + w, y + h)
+        if overlaps(b):
+            continue
+        boxes.append(b)
+        kept.append((sc, b, k, flip))
+        if len(kept) >= max_results:
+            break
+    props = []
+    for sc, (bx0, by0, bx1, by1), k, flip in kept:
+        poly = clean_polygon([[bx0, by0], [bx1, by0], [bx1, by1], [bx0, by1]], W, H)
+        if poly is None:
+            continue
+        props.append(_prop(dataset, sheet, Proposal.Kind.CV_OBJECT, {'label': label, 'polygon': poly}, float(sc),
+                           {'method': 'template_ncc', 'orientation': int(k) * 90, 'mirrored': bool(flip), 'template_box': [int(x0), int(y0), int(x1), int(y1)]},
+                           f'Looks like the {label} you marked (match {sc:.2f}).', agent=SIMILAR_AGENT, version=SIMILAR_VERSION))
+    Proposal.objects.bulk_create(props)
+    for pr in Proposal.objects.filter(sheet=sheet, agent=SIMILAR_AGENT, ls_prediction_id=None, status='pending'):
+        push_proposal_to_label_studio(pr)
+    return props

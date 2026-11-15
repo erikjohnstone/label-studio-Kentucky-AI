@@ -75,6 +75,7 @@ urlpatterns += [
     path(A + 'sheets/<int:pk>/review/', review_api.sheet_review),
     path(A + 'sheets/<int:pk>/decide/', review_api.sheet_decide),
     path(A + 'sheets/<int:pk>/find-more/', review_api.sheet_find_more),
+    path(A + 'sheets/<int:pk>/find-similar/', review_api.sheet_find_similar),
     path(A + 'sheets/<int:pk>/done/', review_api.sheet_done),
     path(A + 'home/', review_api.home),
     path('ka/engine/<path:path>', views.engine_asset, name='engine-asset'),

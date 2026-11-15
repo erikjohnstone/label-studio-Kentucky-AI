@@ -140,7 +140,7 @@
     if (S.mode === 'review' && cur) {
       const c = cur.confidence ?? 0;
       const others = mainClasses().filter((x) => x !== cur.label && ['wall', 'door', 'window'].includes(x));
-      card = h('div.rv-card', {}, h('div.rv-crop', {}, (crop = svgEl('svg', {})), h('span.lbl', {}, cur.source === 'model' ? 'Suggested by your model' : "Found from the drawing's lines")),
+      card = h('div.rv-card', {}, h('div.rv-crop', {}, (crop = svgEl('svg', {})), h('span.lbl', {}, cur.source === 'model' ? 'Suggested by your model' : cur.source === 'similar' ? 'Looks like the one you marked' : "Found from the drawing's lines")),
         h('div.rv-cb', {}, h('div.rv-what', {}, h('span.sw', { style: PAT[cur.label] || '' }), h('b', {}, nm(cur.label)), h('span.rv-conf.' + confCls(c), {}, `${Math.round(c * 100)}% · ${confTxt(c)}`)),
           h('div.rv-sub', {}, `Is the highlighted outline a ${nm(cur.label).toLowerCase()}? Keep it if it's right.`),
           h('div.rv-acts', {}, h('button.rv-keep', { onclick: () => keep() }, 'Keep ', h('kbd', {}, 'K')), h('button.rv-dis', { onclick: dismiss }, `Not a ${nm(cur.label).toLowerCase()} `, h('kbd', {}, 'D'))),
@@ -150,6 +150,7 @@
       const g = S.regions.find((x) => x.id === S.sel);
       card = g ? h('div.rv-card', {}, h('div.rv-cb', {}, h('div.rv-what', {}, h('span.sw', { style: PAT[g.label] || '' }), h('b', {}, nm(g.label)), h('span.rv-conf.mid', {}, g.id.startsWith('ka') ? 'Kept from AI' : 'Yours')),
         h('div.rv-sub', {}, 'Change its type, or delete it.'), h('div.rv-swap', {}, 'Make it a', mainClasses().filter((x) => x !== g.label).map((o) => h('button', { onclick: () => relabel(g, o) }, nm(o)))),
+        h('button.rv-keep', { style: { width: '100%', marginTop: '12px' }, onclick: () => findSimilar(g) }, `Find more like this `, h('kbd', {}, 'F')),
         h('div.rv-acts', {}, h('button.rv-dis', { onclick: () => removeSel() }, 'Delete ', h('kbd', {}, 'Del')), h('button.rv-dis', { onclick: () => { S.sel = null; renderAll(); } }, 'Deselect ', h('kbd', {}, 'Esc')))))
         : h('div.rv-empty', {}, h('b', {}, S.tool === 'select' || S.tool === 'pan' ? 'Pick a tool to draw' : `Drawing ${nm(S.tool).toLowerCase()}s`), S.tool === 'select' || S.tool === 'pan' ? 'Wall, Door or Window in the toolbar — then drag a box around the item.' : 'Drag a box around each one. Click a shape with Select to change or delete it.');
     } else {
@@ -249,6 +250,20 @@
     } catch (e) { toast(e.message, 'danger'); }
     scan.remove(); hint.remove(); if (btn) btn.disabled = !D.can_find_more;
   }
+  async function findSimilar(g) {
+    if (!g) return;
+    const scan = h('div.rv-scan'); stage.append(scan);
+    const hint = h('div.rv-hint', {}, `✦ Looking for more ${nm(g.label).toLowerCase()}s like this one…`); stage.append(hint);
+    try {
+      await save();
+      const r = await api(`sheets/${SHEET}/find-similar/`, { method: 'POST', body: { polygon: g.poly, label: g.label } });
+      const d = await api(`sheets/${SHEET}/review/`);
+      S.sugg = d.suggestions; S.cur = 0; D.decided = d.decided; S.sessionKept = 0; S.sessionDis = 0;
+      toast(r.created ? `Found ${r.created} more like it. Keep the right ones.` : 'No other matches on this sheet.', r.created ? 'pos' : null);
+      if (r.created) setMode('review'); else renderAll();
+    } catch (e) { toast(e.message, 'danger'); }
+    scan.remove(); hint.remove();
+  }
   async function done() {
     if (S.sugg.length && !(await dialog(`${S.sugg.length} suggestion${S.sugg.length === 1 ? '' : 's'} not checked`, h('p.muted', {}, 'Finish anyway? Unchecked suggestions are dismissed — the model won’t learn from them.'), [{ label: 'Dismiss them and finish', primary: true }]))) return;
     await save();
@@ -257,7 +272,7 @@
     location.href = r.next ? `/ka/markup/${r.next}/` : `/ka/projects/${D.dataset.id}/`;
   }
   function shortcuts() {
-    const rows = [['K', 'Keep the suggestion'], ['D', 'Dismiss it'], ['→ / Tab', 'Skip to the next one'], ['←', 'Previous one'], ['V', 'Select'], ['W  O  N', 'Draw a wall, door or window'], ['H / hold Space', 'Pan'], ['Scroll', 'Zoom'], ['0', 'Fit the sheet'], ['Del', 'Delete the selected shape'], ['Ctrl Z', 'Undo'], ['Enter', 'Done · next sheet']];
+    const rows = [['K', 'Keep the suggestion'], ['D', 'Dismiss it'], ['→ / Tab', 'Skip to the next one'], ['←', 'Previous one'], ['V', 'Select'], ['W  O  N', 'Draw a wall, door or window'], ['H / hold Space', 'Pan'], ['Scroll', 'Zoom'], ['0', 'Fit the sheet'], ['Del', 'Delete the selected shape'], ['F', 'Find more like the selected shape'], ['Ctrl Z', 'Undo'], ['Enter', 'Done · next sheet']];
     dialog('Keyboard shortcuts', h('div.keys', {}, rows.flatMap(([k, t]) => [h('kbd', {}, k), h('span', {}, t)])), []);
   }
 
@@ -311,6 +326,7 @@
       if (k === 'arrowleft') return go(-1);
       if (k === 'enter') return done();
       if (k === 'escape') { S.sel = null; return renderAll(); }
+      if (k === 'f' && S.sel) return findSimilar(S.regions.find((x) => x.id === S.sel));
       if (k === 'delete' || k === 'backspace') return removeSel();
       if (k === '0') return camera(fitView());
       if (k === '?' || (k === '/' && e.shiftKey)) return shortcuts();
