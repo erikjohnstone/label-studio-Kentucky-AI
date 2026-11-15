@@ -828,7 +828,7 @@ def sheet_markup(request, pk):
     POST {result: [...]} saves the user's markup as their Label Studio annotation and syncs it to the dataset."""
     from tasks.models import Annotation, Prediction
 
-    from .labeling import label_config_for, sheet_image_url
+    from .labeling import label_config_markup, sheet_image_url
 
     s = _get(Sheet, request, pk=pk)
     ensure_project(s.dataset)
@@ -862,7 +862,10 @@ def sheet_markup(request, pk):
     preds = [{'id': p.id, 'model_version': p.model_version, 'score': p.score, 'result': p.result}
              for p in Prediction.objects.filter(task_id=s.ls_task_id).order_by('-id')[:5]]
     pending = Proposal.objects.filter(sheet=s, kind=Proposal.Kind.CV_OBJECT, status='pending').count()
-    return Response({'sheet': _ser_sheet(s), 'config': label_config_for(tax),
+    sibs = list(s.dataset.sheets.order_by('id').values_list('id', flat=True))
+    i = sibs.index(s.id)
+    return Response({'sheet': _ser_sheet(s), 'config': label_config_markup(tax), 'dataset': {'id': s.dataset_id, 'name': s.dataset.name},
+                     'prev': sibs[i - 1] if i > 0 else None, 'next': sibs[i + 1] if i + 1 < len(sibs) else None, 'position': [i + 1, len(sibs)],
                      'task': {'id': s.ls_task_id, 'data': {'image': sheet_image_url(s)}},
                      'annotation': {'id': ann.id, 'result': ann.result} if ann else None, 'predictions': preds,
                      'pending_suggestions': pending,

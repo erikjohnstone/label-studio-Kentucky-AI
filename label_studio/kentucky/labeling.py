@@ -84,6 +84,19 @@ def label_config_for(tax: Taxonomy) -> str:
     )
 
 
+def label_config_markup(tax: Taxonomy) -> str:
+    """Contractor labeling config for the embedded engine: outline (polygon) + box only, same control names as the
+    full config so annotations stay compatible with sync and export."""
+    cv = [c for c in tax.classes if c.get('kind') == 'cv' and c['name'] != 'unknown']
+
+    def labels(tag):
+        inner = '\n'.join(f'    <Label value={quoteattr(c["name"])} background={quoteattr(c.get("color", "#62d4dc"))}/>' for c in cv)
+        return f'  <{tag} name="{tag.lower()}" toName="image" strokeWidth="2" opacity="0.35">\n{inner}\n  </{tag}>'
+
+    return ('<View>\n  <Image name="image" value="$image" zoom="true" zoomControl="false" rotateControl="false" crosshair="true"/>\n'
+            f'{labels("PolygonLabels")}\n{labels("RectangleLabels")}\n</View>')
+
+
 def ensure_project(dataset, user=None):
     from projects.models import Project
 
