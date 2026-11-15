@@ -7,8 +7,8 @@ never need their own provider account. All providers run the same container entr
 | Provider | Status | Notes |
 |---|---|---|
 | `local` | **Implemented and verified** | Child process per job (process group), CPU, used by tests and `cpu-local` tier |
-| `modal` | **Implemented, not run against Modal** (no credentials attached) | Selected initial production GPU path: serverless GPU functions, per-second billing, no idle instances to leak. App definition: `deploy/modal/ka_trainer.py`; adapter: `orchestration/providers/modal.py` |
-| `lambda` | **Partial** | Instance launch / status / terminate via the Lambda Cloud API; the SSH bootstrap that starts the container on the instance is **not implemented**, so `check_available()` refuses to launch (no idle billable instance can be created) |
+| `modal` | **Implemented; verified end to end against a stand-in Modal SDK** (`tests/test_modal_provider.py`), never run on Modal (no credentials) | Selected initial production GPU path: serverless GPU functions, per-second billing, no idle instances to leak. App: `deploy/modal/ka_trainer.py` (body in `training/modal_entry.py`); adapter: `orchestration/providers/modal.py` |
+| `lambda` | **Implemented; verified end to end against a fake Lambda API + emulated S3** (`tests/test_lambda_provider.py`), never run on Lambda | Launch with a cloud-init bootstrap: the instance downloads the job + training package via presigned URLs, runs `training.remote_agent` → `training.runner`, streams events, uploads artifacts and `done.json`, powers itself off; the orchestrator always terminates it. Needs the S3/R2 storage backend |
 
 ## Spending safety
 * Paid providers are disabled unless an operator sets `KA_ENABLE_PAID_COMPUTE=1`.
@@ -27,7 +27,10 @@ prohibit resale / third-party access (§1.3(c)). Running training on behalf of K
 confirmed with Modal (e.g. a written agreement) before this path goes live. Modal call results expire after 7 days
 and functions time out after 24 h max; jobs are capped below that.
 
-## Enabling Lambda (operator, after bootstrap is implemented)
-`LAMBDA_API_KEY`, `KA_LAMBDA_REGION`, `KA_LAMBDA_SSH_KEY`, `KA_LAMBDA_BOOTSTRAP=True`. The API base is
-configurable with `KA_LAMBDA_API_BASE` (default `https://cloud.lambda.com/api/v1`, Bearer auth, verified against
-Lambda's OpenAPI spec v1.10.0). Launch accepts cloud-init `user_data`, which is the intended bootstrap path.
+## Enabling Lambda (operator)
+Set `LAMBDA_API_KEY`, `KA_LAMBDA_REGION`, `KA_LAMBDA_SSH_KEY` (an SSH key name registered with Lambda — the launch
+API requires exactly one), the S3/R2 storage backend (`KA_STORAGE_BACKEND=s3`, bucket, endpoint, keys) and
+`KA_ENABLE_PAID_COMPUTE=1`. The API base is configurable with `KA_LAMBDA_API_BASE` (default
+`https://cloud.lambda.com/api/v1`, Bearer auth, per Lambda's OpenAPI spec v1.10.0). The instance never receives
+platform credentials — only presigned URLs scoped to its own job prefix, valid for the run time + 3 h.
+Before production: run one small job on the cheapest instance type and record it in `TEST_RESULTS.md`.

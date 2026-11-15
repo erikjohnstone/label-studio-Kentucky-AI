@@ -67,8 +67,13 @@ def _s3():
     global _S3
     if _S3 is None:
         import boto3
+        from botocore.config import Config
 
-        _S3 = boto3.client('s3', endpoint_url=getattr(settings, 'KA_S3_ENDPOINT_URL', None) or os.environ.get('KA_S3_ENDPOINT_URL') or None,
+        # checksums only when the API requires them: R2 (and older S3-compatible stores) reject or mangle the
+        # streaming 'aws-chunked' checksum uploads newer botocore sends by default
+        cfg = Config(request_checksum_calculation='when_required', response_checksum_validation='when_required',
+                     retries={'max_attempts': 5, 'mode': 'standard'})
+        _S3 = boto3.client('s3', config=cfg, endpoint_url=getattr(settings, 'KA_S3_ENDPOINT_URL', None) or os.environ.get('KA_S3_ENDPOINT_URL') or None,
                            region_name=getattr(settings, 'KA_S3_REGION', None) or os.environ.get('KA_S3_REGION') or 'auto')
     return _S3
 
@@ -175,3 +180,13 @@ def verify_signed(token: str, ttl_s: int = DEFAULT_TTL_S) -> dict:
     data = signing.loads(token, salt=SIGNING_SALT, max_age=ttl_s)
     _check(data['k'], data['o'])  # re-check org prefix
     return data
+
+
+def presign(k: str, method: str = 'get', ttl_s: int = 3600) -> str:
+    """Time-limited direct URL to one object, for compute instances that have no platform credentials
+    (S3/R2 backend only; S3 caps presigned URLs at 7 days)."""
+    _check(k)
+    if backend() != 's3':
+        raise StorageError('presigned URLs need the S3/R2 storage backend')
+    op = {'get': 'get_object', 'put': 'put_object'}[method]
+    return _s3().generate_presigned_url(op, Params={'Bucket': _bucket(), 'Key': k}, ExpiresIn=max(60, min(int(ttl_s), 7 * 24 * 3600)))

@@ -26,7 +26,10 @@ def run(job_dir: str) -> int:
 
     rep = Reporter(os.path.join(job_dir, 'events.jsonl'))
     spec['job_dir'] = job_dir
-    spec.setdefault('out_dir', os.path.join(job_dir, 'artifacts'))
+    spec.setdefault('out_dir', 'artifacts')
+    for k in ('bundle_dir', 'out_dir', 'base_checkpoint'):  # relative paths resolve inside the job directory
+        if spec.get(k) and not os.path.isabs(spec[k]):
+            spec[k] = os.path.join(job_dir, spec[k])
     deadline = time.time() + float(spec.get('max_runtime_s') or spec['config'].get('max_runtime_s', 3600))
     try:
         import torch

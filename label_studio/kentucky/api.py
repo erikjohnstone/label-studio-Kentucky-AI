@@ -780,6 +780,12 @@ def billing(request):
         if request.data.get('payment_method') == 'test_card':
             if ledger.stripe_mode() == 'live':
                 raise ValidationError({'detail': 'test cards are not allowed in live mode'})
+            if ledger.stripe_mode() == 'test':
+                try:
+                    ledger.ensure_stripe_customer(org, test_card=True)
+                except Exception as e:  # noqa: BLE001
+                    raise ValidationError({'detail': f'Stripe (test mode) refused: {e}'})
+                acct.refresh_from_db()
             acct.payment_method_status = 'test_card'
         if request.data.get('payment_method') == 'remove':
             acct.payment_method_status = 'none'

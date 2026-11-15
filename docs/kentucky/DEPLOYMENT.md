@@ -44,3 +44,11 @@ implemented; it would reuse the Modal container with a web endpoint.
 ## API keys
 `/ka/keys/`: create (shown once; only SHA-256 stored), rotate (new key, old revoked atomically), revoke.
 `last_used_at` is tracked; every prediction writes an audit entry.
+
+## Hosting the platform
+* Image: `docker build -f Dockerfile.kentucky -t ka-platform .` (Debian slim, Python 3.12 — PyTorch/PyG have no Alpine wheels).
+* Two services from the same image: **web** `bash deploy/kentucky/start-web.sh` (migrations, static, gunicorn on `$PORT`)
+  and **worker** `bash deploy/kentucky/start-worker.sh` (`ka_worker`: training jobs + always-on hosting meter).
+* Railway: `deploy/kentucky/railway.json` (Dockerfile build, `/health/` check). Add Postgres and set `DJANGO_DB=default`,
+  `POSTGRE_HOST/PORT/NAME/USER/PASSWORD`, `SECRET_KEY`, `LABEL_STUDIO_HOST`, the S3/R2 variables and (later) Stripe and GPU keys.
+* Not deployed yet — no hosting service is connected.

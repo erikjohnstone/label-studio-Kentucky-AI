@@ -200,7 +200,8 @@ def prepare_job_dir(job: TrainingJob) -> Path:
         base = d / 'base.pt'
         base.write_bytes(storage.get_bytes(job.base_model_version.artifact_key, job.organization_id))
     spec = {'job_id': job.id, 'task': job.task, 'catalog_id': job.catalog_id, 'init': job.init, 'config': job.config,
-            'bundle_dir': str(d / 'bundle'), 'out_dir': str(d / 'artifacts'), 'base_checkpoint': str(base) if base else None,
+            # paths are relative to the job directory so the same spec runs on any provider (local, Modal, Lambda)
+            'bundle_dir': 'bundle', 'out_dir': 'artifacts', 'base_checkpoint': 'base.pt' if base else None,
             'max_runtime_s': job.max_runtime_s}
     (d / 'spec.json').write_text(json.dumps(spec, indent=1))
     return d

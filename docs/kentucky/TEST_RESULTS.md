@@ -8,7 +8,7 @@ Measured on the development container (4 vCPU, no GPU, Python 3.12.3, torch 2.15
 ```bash
 cd label_studio
 python -m pytest kentucky/tests -q -p no:cacheprovider
-# 44 passed
+# 50 passed
 ```
 
 | File | What it proves |
@@ -20,6 +20,9 @@ python -m pytest kentucky/tests -q -p no:cacheprovider
 | `test_training_center.py` | Training Center advanced mode: defaults + schema, per-architecture estimates, explicit architecture / start point / settings stored exactly, invalid settings rejected, run lineage for Experiments |
 | `test_storage_s3.py` | S3-compatible backend (R2/S3/MinIO) against moto's emulated S3: round-trips, org-prefix refusal, prefix delete, PDF ingestion writing to the bucket, sheet image + signed download served from it, cross-org 404 |
 | `test_hosting.py` | Always-on hosting: hourly accrual is idempotent, pro-rata on pause, nothing accrues while paused, no back-billing on resume; auto-pause at the spend limit; dedicated deploy refused when it would pass the limit |
+| `test_lambda_provider.py` | Lambda Cloud: launch through a fake Lambda API records instance type, SSH key and a cloud-init script with no secrets; the script's agent runs locally against emulated S3 (presigned URLs only) and performs real GNN training; the orchestrator syncs events + checkpoint, registers the model, bills once and terminates the instance; a lost instance fails and is terminated; refuses without bucket or SSH key |
+| `test_modal_provider.py` | Modal: stand-in SDK whose `spawn` runs the real deployed function body (`training/modal_entry.py`) into a local volume; real training, progress mirrored, checkpoint synced, model registered, billed once, call cancelled on cleanup |
+| `test_stripe.py` | Stripe test mode with the HTTP API mocked: customer created once (idempotent), `pm_card_visa` attached as default, one invoice item per ledger charge keyed by the ledger idempotency key, sub-cent amounts as decimal cents; live keys blocked without the operator flag |
 | `test_security.py` | **Test E** org B cannot read or change org A's drawings, datasets, annotations, jobs, checkpoints, models, deployments or API keys (API + signed file URLs) |
 | `test_training_failures.py` | **Test F** invalid datasets/selections fail validation; missing weights / unknown init / CPU-only restrictions; paid providers require operator enablement + payment method; cancellation kills the worker and bills once; timeouts terminate hung workers; worker crash retried (infra failure not charged); training-code errors fail without retry; ledger idempotency |
 
@@ -67,6 +70,15 @@ drawings — production accuracy must be measured on customer plans.
 
 ## Not verified here
 
-* Paid GPUs (Modal, Lambda): adapters implemented and unit-tested with fakes; no billable GPU was created.
-* Stripe: off unless `KA_STRIPE_SECRET_KEY` is set; ledger and limits are tested locally.
+* Paid GPUs (Modal, Lambda): both verified end to end against stand-ins (see above); no billable GPU was created.
+* Stripe: verified against a mocked Stripe API in test mode; never called the real API (no key).
 * Postgres and a real R2/S3 bucket in production (S3 code path verified only against moto); Railway/hosted deployment.
+
+## Production start (no hosting service connected)
+`deploy/kentucky/start-web.sh` under gunicorn on port 8091 with the dev database: `/health/` 200, `/ka/` 302 → login,
+static 200, `/api/ka/home/` without a session 401, and an authenticated `POST /api/ka/v1/deployments/<slug>/predict`
+returned predictions. `Dockerfile.kentucky` was not built here (no Docker daemon in this environment).
+
+Two production bugs found by these tests and fixed: job specs used absolute paths from the orchestrator machine
+(would break every remote provider) — now relative to the job directory; newer botocore's default streaming
+checksums corrupted uploads to S3-compatible stores (also an R2 incompatibility) — checksums now only when required.

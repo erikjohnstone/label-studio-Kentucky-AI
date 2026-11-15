@@ -101,6 +101,32 @@ def stripe_mode() -> str:
     return 'live' if getattr(settings, 'KA_STRIPE_LIVE', False) else 'blocked_live_key'
 
 
+def _stripe(method, path, idem=None, **data):
+    import requests
+
+    r = requests.request(method, 'https://api.stripe.com/v1' + path, auth=(settings.KA_STRIPE_SECRET_KEY, ''),
+                         headers={'Idempotency-Key': idem} if idem else {}, data=data, timeout=15)
+    r.raise_for_status()
+    return r.json()
+
+
+def ensure_stripe_customer(org, test_card=False) -> str | None:
+    """Create the org's Stripe customer once (idempotent per org). In test mode, optionally attach Stripe's
+    ``pm_card_visa`` test card as the default so invoices can be finalized end to end. Never in live mode."""
+    mode = stripe_mode()
+    if mode not in ('test', 'live'):
+        return None
+    acct = account(org)
+    if not acct.stripe_customer_id:
+        c = _stripe('POST', '/customers', idem=f'ka-org-{org.id}-customer', name=org.title[:200], **{'metadata[ka_org]': str(org.id)})
+        acct.stripe_customer_id = c['id']
+        acct.save(update_fields=['stripe_customer_id'])
+    if test_card and mode == 'test':
+        pm = _stripe('POST', '/payment_methods/pm_card_visa/attach', idem=f'ka-org-{org.id}-pm-visa', customer=acct.stripe_customer_id)
+        _stripe('POST', f'/customers/{acct.stripe_customer_id}', **{'invoice_settings[default_payment_method]': pm['id']})
+    return acct.stripe_customer_id
+
+
 def submit_to_stripe(entry: LedgerEntry):
     """Report a charge to Stripe as an invoice item (test mode by default)."""
     mode = stripe_mode()
@@ -111,20 +137,12 @@ def submit_to_stripe(entry: LedgerEntry):
     if not acct.stripe_customer_id:
         LedgerEntry.objects.filter(pk=entry.pk).update(stripe_status='no_customer')
         return
-    import requests
-
     try:
-        r = requests.post(
-            'https://api.stripe.com/v1/invoiceitems',
-            auth=(settings.KA_STRIPE_SECRET_KEY, ''),
-            headers={'Idempotency-Key': entry.idempotency_key},
-            data={'customer': acct.stripe_customer_id, 'currency': 'usd',
-                  'amount': int((entry.customer_charge_usd * 100).to_integral_value()),
-                  'description': entry.description or entry.kind, 'metadata[ledger_key]': entry.idempotency_key},
-            timeout=15,
-        )
-        r.raise_for_status()
-        LedgerEntry.objects.filter(pk=entry.pk).update(stripe_status=f'submitted_{mode}', stripe_ref=r.json().get('id', ''))
+        # Stripe amounts are integer cents; sub-cent usage (single API calls) accrues as decimal amounts
+        r = _stripe('POST', '/invoiceitems', idem=entry.idempotency_key, customer=acct.stripe_customer_id, currency='usd',
+                    unit_amount_decimal=str((entry.customer_charge_usd * 100).quantize(Decimal('0.000001'))), quantity=1,
+                    description=entry.description or entry.kind, **{'metadata[ledger_key]': entry.idempotency_key})
+        LedgerEntry.objects.filter(pk=entry.pk).update(stripe_status=f'submitted_{mode}', stripe_ref=r.get('id', ''))
     except Exception as e:  # noqa: BLE001
         logger.warning('stripe submit failed: %s', e)
         LedgerEntry.objects.filter(pk=entry.pk).update(stripe_status='error')
