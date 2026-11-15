@@ -910,31 +910,20 @@ def sheet_markup(request, pk):
 
 
 GOALS = {
-    'outlines': {'task': 'semantic_segmentation', 'catalog_id': 'seg-lraspp-mbv3'},
+    'outlines': {'task': 'semantic_segmentation', 'catalog_id': 'seg-dinov2-s'},
     'structure': {'task': 'node_classification', 'catalog_id': 'gnn-gps-node'},
     'relations': {'task': 'edge_classification', 'catalog_id': 'gnn-sage-edge'},
 }
 
 
 def _outline_choice(d) -> str:
-    """Architecture for one-click 'outlines' training, by measurement (docs/kentucky/TEST_RESULTS.md): keep the
-    best-scoring architecture already trained on this plan set (so the run continues from it); otherwise DINOv2-S for mostly
-    scanned sets with 5+ checked sheets (0.74 vs 0.63 mean IoU), else LR-ASPP (as good on vectors, much faster)."""
-    from .review_api import _sheet_state
-
+    """Architecture for one-click 'outlines' training: the best-scoring architecture already trained on this plan set
+    (so the run continues from it); otherwise the catalog default (DINOv2-S, per docs/kentucky/research/MODEL_REVIEW_2026-11.md)."""
     trained = [mv for mv in ModelVersion.objects.filter(organization=d.organization, dataset_version__dataset=d, status='ready',
                                                         model__task='semantic_segmentation').select_related('model')
-               if catalog.get(mv.model.catalog_id)]
+               if catalog.get(mv.model.catalog_id) and catalog.get(mv.model.catalog_id).get('tier') != 'retired']
     if trained:  # the best-scoring one, not the newest: an experiment must not change the default
         return max(trained, key=lambda mv: ((TA.report_card(mv.metrics, mv.model.task) or {}).get('score') or 0, mv.created_at)).model.catalog_id
-    sheets = list(d.sheets.all())
-    pend = dict(Proposal.objects.filter(dataset=d, kind=Proposal.Kind.CV_OBJECT, status='pending')
-                .values_list('sheet_id').annotate(n=Count('id')).values_list('sheet_id', 'n'))
-    done = sum(1 for s in sheets if _sheet_state(s, pend.get(s.id, 0)) == 'done')
-    scanned = sum(1 for s in sheets if not s.has_vector)
-    item = catalog.get('seg-dinov2-s')
-    if item and scanned * 2 > len(sheets) and done >= item.get('min_sheets', 0):
-        return 'seg-dinov2-s'
     return GOALS['outlines']['catalog_id']
 
 
@@ -964,8 +953,9 @@ def dataset_train(request, pk):
             same = ModelVersion.objects.filter(organization=d.organization, model__catalog_id=goal['catalog_id'], status='ready')
             base = (same.filter(dataset_version__dataset=d).order_by('-created_at').first()  # this plan set's model first
                     or same.order_by('-created_at').first())
-    if init is None:
-        init = 'checkpoint' if base else 'scratch'
+    if init is None:  # continue from your model, else the licensed pretrained start, else zero
+        pre = next((i for i in (catalog.get(goal['catalog_id']) or {}).get('inits', []) if i['id'] == 'pretrained'), None)
+        init = 'checkpoint' if base else ('pretrained' if pre and pre.get('commercially_deployable') is True else 'scratch')
     j = orch.create_job(d.organization, request.user, v, goal['catalog_id'], init,
                         request.data.get('config') or {}, base, request.data.get('gpu_type', 'cpu-local'),
                         request.data.get('name') or f'{d.name} — {"plan outlines" if goal["task"] == "semantic_segmentation" else "plan structure"}')

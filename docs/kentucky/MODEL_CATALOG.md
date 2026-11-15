@@ -74,3 +74,14 @@ RT-DETRv2: Lv et al. 2024; Mask R-CNN: He et al. 2017; GPS: Rampasek et al. 2022
 GATv2: Brody et al. 2022, applied to CAD by GAT-CADNet, CVPR 2022; GCN: Kipf & Welling 2017), mapped to the jobs
 customers train for: outline areas, item counts, linear runs (duct / pipe / conduit) and line-by-line labeling.
 Results from the small synthetic platform tests are kept in TEST_RESULTS.md as bug-hunting runs, not as model rankings.
+
+## Lineup (from MODEL_REVIEW_2026-11.md)
+`tier` in catalog.py: **default** (pre-selected, "Recommended"), **keep** (shown), **other** (folded under "Other models"),
+**retired** (not offered for new models; existing trained versions keep working and can be continued).
+| Task | Default | Shown | Other | Retired |
+|---|---|---|---|---|
+| Outline areas | DINOv2-S | — | LR-ASPP | SegFormer-B0 |
+| Item by item | D-FINE-S (until RF-DETR trains reliably here) | RF-DETR-S | RT-DETRv2, Mask R-CNN R50 | Mask R-CNN MobileNetV3 |
+| Name every line | GPS graph transformer | GATv2 | GraphSAGE | GCN |
+| Connections | GraphSAGE edge classifier | — | — | — |
+One-click Train uses the default with its licensed pretrained start (previously it started from zero when no earlier model existed).

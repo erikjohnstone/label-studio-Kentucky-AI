@@ -223,7 +223,7 @@
     async function customize() {
       const TASKLIST = Object.keys(TASKS);
       let task = adv ? adv.task : 'semantic_segmentation';
-      let cid = adv ? adv.catalog_id : null, init = adv ? adv.init : null, base = adv ? adv.base_model_version_id : null, cfg = adv ? { ...adv.fullConfig } : null, defaults = null, schema = {}, enums = {};
+      let cid = adv ? adv.catalog_id : null, init = adv ? adv.init : null, base = adv ? adv.base_model_version_id : null, cfg = adv ? { ...adv.fullConfig } : null, defaults = null, schema = {}, enums = {}, showOther = false;
       const own = ms.flatMap((m) => m.versions.map((v) => ({ ...v, m }))).filter((v) => v.status === 'ready');
       const body = h('div.adv-body');
       const close = () => scrim.remove();
@@ -233,7 +233,7 @@
       const loadDefaults = async () => { const r = await api(`training/defaults/?catalog_id=${cid}&train_items=${Math.max(1, hp.done)}`); defaults = r.config; schema = r.schema; enums = r.enums; if (!cfg || cfg._cid !== cid) cfg = { ...r.config, _cid: cid }; };
       const arches = () => cat.open_models.filter((m) => m.task === task);
       const draw = async () => {
-        if (!cid || !arches().some((a) => a.id === cid)) { const kind = hp.scanned * 2 > hp.sheets.length ? 'scan' : 'vector'; cid = (arches().find((a) => a.best_for === kind && !(a.min_sheets > hp.done)) || arches().find((a) => a.recommended) || arches().find((a) => a.cpu_trainable && !(a.min_sheets > hp.done)) || arches()[0])?.id; init = null; cfg = null; }
+        if (!cid || !arches().some((a) => a.id === cid)) { cid = (arches().find((a) => a.tier === 'default') || arches().find((a) => a.tier !== 'retired') || arches()[0])?.id; init = null; cfg = null; }
         if (cid && (!cfg || cfg._cid !== cid)) await loadDefaults();
         const arch = arches().find((a) => a.id === cid);
         const inits = arch ? arch.inits.filter((i) => i.id !== 'checkpoint') : [];
@@ -246,8 +246,10 @@
         const fields = cfg ? Object.keys(schema).filter((k) => ['epochs', 'batch_size', 'lr', 'weight_decay', 'crop_size', 'crops_per_sheet', 'training_scale', 'hidden', 'layers', 'heads', 'dropout', 'early_stopping_patience', 'seed', 'max_runtime_s'].includes(k)) : [];
         body.replaceChildren(
           step(1, 'What should it learn?', h('div.advgrid', {}, TASKLIST.map((t) => opt(task === t, () => { task = t; cid = null; draw(); }, TASKS[t], TASKDESC[t], [rd.ready_for?.[t] ? lic('Your labels are ready', true) : lic('Needs more labels')])))),
-          step(2, 'Model architecture', h('div.advgrid', {}, arches().map((a) => opt(cid === a.id, () => { cid = a.id; init = null; base = null; cfg = null; draw(); }, a.plain_name || a.name, h('span', {}, h('span.techname', {}, a.name.replace(/ \((pretrained|architecture)\)$/, '')), h('br'), a.description),
-            [lic(`Code: ${a.implementation_license}`, true), a.inits.some((i) => i.id === 'pretrained' && i.commercially_deployable) ? lic('Pretrained · OK to deploy', true) : null, a.badge ? h('span.pill.cy', {}, a.badge) : null, a.experimental ? lic('Experimental', false) : null, lic(a.cpu_trainable ? 'Trains on our servers' : `Needs GPU (${a.gpu_recommended})`, a.cpu_trainable ? true : null)].filter(Boolean))))),
+          step(2, 'Model', h('div.advgrid', {}, arches().filter((a) => a.tier === 'default' || a.tier === 'keep' || a.id === cid || (showOther && a.tier === 'other')).map((a) => opt(cid === a.id, () => { cid = a.id; init = null; base = null; cfg = null; draw(); }, a.plain_name || a.name, h('span', {}, h('span.techname', {}, a.name.replace(/ \((pretrained|architecture)\)$/, '')), h('br'), a.description),
+            [a.tier === 'default' ? h('span.pill.ok', {}, 'Recommended') : null, a.tier === 'retired' ? lic('Retired — kept for your existing models', false) : null, lic(`Code: ${a.implementation_license}`, true), a.inits.some((i) => i.id === 'pretrained' && i.commercially_deployable) ? lic('Pretrained · OK to deploy', true) : null, a.badge ? h('span.pill.cy', {}, a.badge) : null, a.experimental ? lic('Experimental', false) : null, lic(a.cpu_trainable ? 'Trains on our servers' : `Needs GPU (${a.gpu_recommended})`, a.cpu_trainable ? true : null)].filter(Boolean)))),
+            arches().some((a) => a.tier === 'other' && a.id !== cid) ? h('button.btn.sm.ghost', { style: { marginTop: '10px' }, onclick: () => { showOther = !showOther; draw(); } },
+              showOther ? 'Hide other models' : `Other models (${arches().filter((a) => a.tier === 'other' && a.id !== cid).length}) — older or more specialised`) : null),
           step(3, 'Starting point', h('div.advgrid', {},
             opt(false, null, 'Kentucky AI model', cat.kentucky_models_note || 'Coming soon', [lic('Not available yet')], true),
             inits.map((i) => opt(init === i.id, () => { init = i.id; base = null; draw(); }, i.id === 'scratch' ? 'Start from zero' : 'Pretrained start', i.id === 'scratch' ? (i.note || '') : h('span', {}, h('span.techname', {}, i.label), h('br'), i.note || i.checkpoint_license),

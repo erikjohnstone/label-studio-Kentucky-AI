@@ -1,10 +1,10 @@
-"""One-click outline training picks the architecture the benchmarks favour for the plan set."""
+"""One-click outline training: the research default (DINOv2-S), or the best-scoring architecture already trained on the set."""
 
 import pytest
 
 
 @pytest.mark.django_db
-def test_scans_with_enough_checked_sheets_get_dinov2(org_a):
+def test_outline_default_and_continuation(org_a):
     from kentucky import storage
     from kentucky.api import _outline_choice
     from kentucky.models import DatasetVersion, ModelVersion, RegisteredModel
@@ -12,16 +12,8 @@ def test_scans_with_enough_checked_sheets_get_dinov2(org_a):
 
     user, org = org_a
     scans, vec = F.make_dataset(org, user, name='scans'), F.make_dataset(org, user, name='vectors')
-    sheets = [F.upload_plan(scans, user, 80 + i, 'png')[2] for i in range(5)]
-    F.upload_plan(vec, user, 90, 'pdf')
-    for s in sheets[:4]:
-        s.labeling_status = 'reviewed'
-        s.save()
-    assert _outline_choice(scans) == 'seg-lraspp-mbv3'  # only 4 checked: DINOv2 trailed on small sets
-    sheets[4].labeling_status = 'reviewed'
-    sheets[4].save()
     assert _outline_choice(scans) == 'seg-dinov2-s'
-    assert _outline_choice(vec) == 'seg-lraspp-mbv3'  # tied on vectors at many times the time
+    assert _outline_choice(vec) == 'seg-dinov2-s'
 
     # an architecture already trained on the set is kept, so one-click continues from it
     k = storage.key(org.id, 'models', 'p', 'm.pt')
@@ -43,4 +35,10 @@ def test_scans_with_enough_checked_sheets_get_dinov2(org_a):
     assert _outline_choice(vec) == 'seg-dinov2-s'
     ModelVersion.objects.filter(model=lr).update(metrics=seg_metrics(0.0))
     ModelVersion.objects.filter(model=rm).update(metrics=seg_metrics(0.4))
+    assert _outline_choice(vec) == 'seg-lraspp-mbv3'
+
+    # a retired architecture is never picked for new training, even if it scored best
+    old = RegisteredModel.objects.create(organization=org, name='seg3', task='semantic_segmentation', catalog_id='seg-segformer-b0')
+    ModelVersion.objects.create(organization=org, model=old, version=1, artifact_key=k, artifact_sha256='0' * 64,
+                                dataset_version=dv, status='ready', metrics=seg_metrics(0.0))
     assert _outline_choice(vec) == 'seg-lraspp-mbv3'
