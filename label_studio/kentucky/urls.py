@@ -41,6 +41,7 @@ urlpatterns = [
     path(A + 'sheets/<int:pk>/', api.sheet_detail),
     path(A + 'sheets/<int:pk>/primitives/', api.sheet_primitives),
     path(A + 'sheets/<int:pk>/graph/', api.sheet_graph),
+    path(A + 'sheets/<int:pk>/takeoff/', api.sheet_takeoff),
     path(A + 'sheets/<int:pk>/graph/review/', api.sheet_graph_review),
     path(A + 'sheets/<int:pk>/graph/versions/', api.sheet_graph_versions),
     path(A + 'sheets/<int:pk>/graph/rebuild/', api.sheet_graph_rebuild),

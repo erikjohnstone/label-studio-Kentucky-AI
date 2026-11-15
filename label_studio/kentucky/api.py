@@ -573,6 +573,50 @@ def job_cancel(request, pk):
     return Response(_ser_job(j))
 
 
+def _takeoff_for(sheet, labels: dict, fpu_override=None) -> dict:
+    from . import takeoff as T
+    from .ingest.pipeline import load_primitives
+
+    prim = load_primitives(sheet)
+    fpu, how = T.feet_per_unit(sheet.source_units, prim.get('metadata') or {}, prim['primitives'], fpu_override)
+    out = T.takeoff(prim['primitives'], labels, fpu)
+    out.update({'sheet_id': sheet.id, 'feet_per_unit': fpu, 'scale_source': how})
+    return out
+
+
+@api_view(['GET'])
+def sheet_takeoff(request, pk):
+    """Quantities for one sheet: run length per system (feet when the scale is known), fittings, runs.
+    Labels come from the sheet's current line labels, or from a line-by-line model (?model_version=ID)."""
+    s = _get(Sheet, request, pk=pk)
+    if not s.has_vector:
+        raise ValidationError({'detail': 'Takeoff needs vector lines (PDF or CAD). Scanned sheets are not supported yet.'})
+    fpu = request.GET.get('feet_per_unit')
+    try:
+        fpu = float(fpu) if fpu else None
+    except ValueError:
+        raise ValidationError({'feet_per_unit': 'number'})
+    if request.GET.get('model_version'):
+        from .inference.predictors import InferenceError, predict
+
+        mv = _get(ModelVersion, request, pk=request.GET['model_version'])
+        if mv.model.task != 'node_classification':
+            raise ValidationError({'model_version': 'needs a line-by-line model'})
+        try:
+            res = predict(mv, {'sheet_id': s.id}, s.organization_id)
+        except InferenceError as e:
+            raise ValidationError({'detail': str(e)})
+        labels = {pid: n['label'] for n in res['nodes'] for pid in n.get('primitive_ids', [n['id']])}
+        source = f'model v{mv.version}'
+    else:
+        g = LA.current_graph(s)
+        labels = {pid: n['label'] for n in g.graph['nodes'] if n.get('label') for pid in n.get('primitive_ids', [n['id']])}
+        source = f'line labels v{g.version}'
+    out = _takeoff_for(s, labels, fpu)
+    out['labels_from'] = source
+    return Response(out)
+
+
 @api_view(['GET'])
 def job_diagnose(request, pk):
     return Response(TA.diagnose(_get(TrainingJob, request, pk=pk)))

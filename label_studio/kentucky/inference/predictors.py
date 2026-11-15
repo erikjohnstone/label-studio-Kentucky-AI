@@ -207,7 +207,13 @@ def predict(mv, payload: dict, org_id: int) -> dict:
         nodes = [{'id': n['id'], 'label': classes[int(cls[i])], 'confidence': round(float(conf[i]), 4),
                   'probabilities': {c: round(float(prob[i, j]), 4) for j, c in enumerate(classes)},
                   'primitive_ids': n.get('primitive_ids', [n['id']]), 'bbox': n.get('bbox')} for i, n in enumerate(g['nodes'])]
-        return {'task': task, 'model_version': mv.id, 'sheet_id': sheet.id if sheet else None, 'nodes': nodes}
+        out = {'task': task, 'model_version': mv.id, 'sheet_id': sheet.id if sheet else None, 'nodes': nodes}
+        if payload.get('takeoff') and sheet is not None:  # quantities from the predicted labels
+            from ..api import _takeoff_for
+
+            labels = {pid: n['label'] for n in nodes for pid in n['primitive_ids']}
+            out['takeoff'] = _takeoff_for(sheet, labels, payload.get('feet_per_unit'))
+        return out
     # edge classification: PyG export duplicates undirected edges (u->v, v->u); average both directions
     edges = []
     k = 0
