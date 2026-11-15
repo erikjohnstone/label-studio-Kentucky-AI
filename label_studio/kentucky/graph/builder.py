@@ -25,8 +25,40 @@ FEATURE_SPEC = {
     + ['length', 'dir_sin2', 'dir_cos2', 'bbox_w', 'bbox_h', 'stroke_width', 'closed', 'degree', 'raster_inferred', 'n_points'],
     'edge': [f'type_{t}' for t in EDGE_TYPES] + ['distance', 'angle_sin', 'overlap', 'same_layer', 'perpendicular'],
 }
-NODE_DIM = len(FEATURE_SPEC['node'])
+NODE_DIM = len(FEATURE_SPEC['node'])  # stored per node in saved graphs (unchanged since v1)
 EDGE_DIM = len(FEATURE_SPEC['edge'])
+
+# Drawing-style features, computed from node attributes when a graph becomes model input and appended after the
+# stored ones (so models trained on v1 keep working by reading the first NODE_DIM columns). The CAD layer is the
+# strongest single cue on CAD drawings (VecFormer ablation); names differ between firms, so we use the US National
+# CAD Standard discipline letter (M-, P-, E- ...) plus hashed name words, and the line's dash pattern.
+DISCIPLINES = ['A', 'C', 'E', 'F', 'G', 'I', 'L', 'M', 'P', 'Q', 'S', 'T', 'other', 'none']
+LAYER_HASH = 16
+STYLE_SPEC = ['dashed'] + [f'disc_{d}' for d in DISCIPLINES] + [f'layer_h{i}' for i in range(LAYER_HASH)]
+STYLE_DIM = len(STYLE_SPEC)
+MODEL_NODE_DIM = NODE_DIM + STYLE_DIM
+FEATURE_SPEC['version'] = 'ka-graph-features-2'
+FEATURE_SPEC['node_style'] = STYLE_SPEC
+COMPATIBLE_SPECS = ('ka-graph-features-1', 'ka-graph-features-2')  # same stored features; v1 graphs lack style attributes
+
+
+def style_features(node: dict) -> list[float]:
+    import re
+    import zlib
+
+    f = [0.0] * STYLE_DIM
+    f[0] = 1.0 if node.get('dashed') else 0.0
+    layer = (node.get('layer') or '').strip().upper()
+    if not layer or layer == '0':
+        f[1 + DISCIPLINES.index('none')] = 1.0
+        return f
+    m = re.match(r'^([A-Z])[-_ .]', layer)
+    disc = m.group(1) if m and m.group(1) in DISCIPLINES else 'other'
+    f[1 + DISCIPLINES.index(disc)] = 1.0
+    words = [w for w in re.split(r'[^A-Z0-9]+', layer[2:] if m else layer) if w]
+    for w in words:
+        f[1 + len(DISCIPLINES) + zlib.crc32(w.encode()) % LAYER_HASH] = 1.0
+    return f
 
 
 def _dir(pts):
@@ -64,7 +96,7 @@ def build_graph(primitives: list[dict], image_size, params: dict | None = None) 
         feat[16] = min(len(pts), 64) / 64
         nodes.append({
             'id': pr['id'], 'type': t, 'label': None, 'primitive_ids': [pr['id']], 'object_uid': None,
-            'bbox': pr['bbox'], 'features': feat, 'layer': pr.get('layer'), 'text': pr.get('text'),
+            'bbox': pr['bbox'], 'features': feat, 'layer': pr.get('layer'), 'text': pr.get('text'), 'dashed': bool(pr.get('dash')),
             'provenance': pr.get('provenance', 'import'), 'review': 'pending', 'confidence': None,
         })
         if t == 'text':

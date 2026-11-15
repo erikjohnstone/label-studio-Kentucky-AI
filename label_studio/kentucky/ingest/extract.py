@@ -59,6 +59,13 @@ def _prim(pid, ptype, pts_src, M, **extra):
     return d
 
 
+def _dash(obj):
+    """PDF dash array (e.g. [6, 3]) or None for solid strokes. Pipe and conduit systems are often told apart by it."""
+    d = obj.get('dash')
+    arr = d[0] if isinstance(d, (list, tuple)) and d and isinstance(d[0], (list, tuple)) else None
+    return [round(float(v), 3) for v in arr] if arr else None
+
+
 # ------------------------------------------------------------------------------------------ PDF
 def _render_scale(w_pt, h_pt):
     return min(MAX_RENDER_PX / max(w_pt, h_pt), max(TARGET_RENDER_PX / max(w_pt, h_pt), 1.0))
@@ -102,19 +109,19 @@ def extract_pdf(data: bytes, max_pages: int = 50):
             n = 0
             for ln in page.lines:
                 pts = ln.get('pts') or [(ln['x0'], ln['top']), (ln['x1'], ln['bottom'])]
-                prims.append(_prim(f'p{n}', 'line', src(pts), M, width=ln.get('linewidth'), color=_color(ln.get('stroking_color'))))
+                prims.append(_prim(f'p{n}', 'line', src(pts), M, width=ln.get('linewidth'), color=_color(ln.get('stroking_color')), dash=_dash(ln)))
                 n += 1
             for cv in page.curves:
                 pts = cv.get('pts') or []
                 if len(pts) < 2:
                     continue
                 prims.append(_prim(f'p{n}', 'curve', src(pts), M, width=cv.get('linewidth'),
-                                   color=_color(cv.get('stroking_color')), closed=bool(cv.get('fill'))))
+                                   color=_color(cv.get('stroking_color')), closed=bool(cv.get('fill')), dash=_dash(cv)))
                 n += 1
             for rc in page.rects:
                 pts = [(rc['x0'], rc['top']), (rc['x1'], rc['top']), (rc['x1'], rc['bottom']), (rc['x0'], rc['bottom'])]
                 prims.append(_prim(f'p{n}', 'rect', src(pts), M, width=rc.get('linewidth'), closed=True,
-                                   color=_color(rc.get('stroking_color'))))
+                                   color=_color(rc.get('stroking_color')), dash=_dash(rc)))
                 n += 1
             words = page.extract_words(keep_blank_chars=True, use_text_flow=False, extra_attrs=['size'])
             for w in words:
@@ -261,10 +268,18 @@ def extract_dxf(data: bytes, max_entities: int = 200_000):
     prims = []
     n = [0]
 
+    def linetype(e):
+        lt = e.dxf.get('linetype', 'BYLAYER') or 'BYLAYER'
+        if lt.upper() in ('BYLAYER', 'BYBLOCK'):
+            lay = doc.layers.get(e.dxf.get('layer', '0'))
+            lt = (lay.dxf.get('linetype', 'Continuous') if lay is not None else 'Continuous') or 'Continuous'
+        return lt
+
     def add(ptype, pts, e, block=None, **kw):
+        lt = linetype(e)
         prims.append(_prim(
             f'p{n[0]}', ptype, pts, M, layer=e.dxf.get('layer', '0'), color=e.dxf.get('color', 256),
-            linetype=e.dxf.get('linetype', 'BYLAYER'), handle=e.dxf.get('handle'), block=block, **kw,
+            linetype=lt, dash=None if lt.upper() == 'CONTINUOUS' else [1.0], handle=e.dxf.get('handle'), block=block, **kw,
         ))
         n[0] += 1
 

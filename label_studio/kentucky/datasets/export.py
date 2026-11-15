@@ -27,7 +27,7 @@ import numpy as np
 from PIL import Image, ImageDraw
 
 from .. import storage
-from ..graph.builder import EDGE_DIM, FEATURE_SPEC, NODE_DIM
+from ..graph.builder import EDGE_DIM, FEATURE_SPEC, MODEL_NODE_DIM, NODE_DIM, style_features
 from ..models import SheetGraph
 from ..training.rle import rle_decode, rle_encode  # noqa: F401
 from .quality import is_verified
@@ -161,7 +161,7 @@ def graph_to_pyg(g: dict, ncls: list[str], ecls: list[str], sheet_id=None, requi
     from ..graph.builder import EDGE_TYPES
 
     idx = {n['id']: i for i, n in enumerate(g['nodes'])}
-    x = torch.tensor([n['features'] for n in g['nodes']], dtype=torch.float32).reshape(-1, NODE_DIM)
+    x = torch.tensor([list(n['features'][:NODE_DIM]) + style_features(n) for n in g['nodes']], dtype=torch.float32).reshape(-1, MODEL_NODE_DIM)
     y = torch.full((len(g['nodes']),), -1, dtype=torch.long)
     for i, n in enumerate(g['nodes']):
         if n.get('label') in ncls and (is_verified(n) or not require_verified):
@@ -203,7 +203,7 @@ def export_pyg(version, graphs, out: Path, splits):
         items = [graph_to_pyg(g, ncls, ecls, sid) for sid, g in sorted(graphs.items()) if splits.get(sid) == split]
         torch.save(items, out / f'{split}.pt')
     (out / 'meta.json').write_text(json.dumps({'feature_spec': FEATURE_SPEC, 'node_classes': ncls, 'edge_classes': ecls,
-                                               'node_dim': NODE_DIM, 'edge_dim': EDGE_DIM}))
+                                               'node_dim': MODEL_NODE_DIM, 'edge_dim': EDGE_DIM}))
 
 
 def store_export(version, out_dir: Path) -> str:

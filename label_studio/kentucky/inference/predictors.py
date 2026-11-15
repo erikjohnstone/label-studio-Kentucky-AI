@@ -176,12 +176,12 @@ def predict(mv, payload: dict, org_id: int) -> dict:
     import torch
 
     from ..datasets.export import graph_to_pyg
-    from ..graph.builder import FEATURE_SPEC, build_graph
+    from ..graph.builder import COMPATIBLE_SPECS, FEATURE_SPEC, build_graph
 
     if payload.get('graph'):
         g = payload['graph']
-        if g.get('feature_spec') and g['feature_spec'] != FEATURE_SPEC['version']:
-            raise InferenceError(f'graph feature_spec {g["feature_spec"]} != model {FEATURE_SPEC["version"]}')
+        if g.get('feature_spec') and g['feature_spec'] not in COMPATIBLE_SPECS:
+            raise InferenceError(f'graph feature_spec {g["feature_spec"]} is not supported (expected {FEATURE_SPEC["version"]})')
         sheet = None
     elif payload.get('sheet_id') is not None:
         from ..ingest.pipeline import load_primitives
@@ -198,6 +198,7 @@ def predict(mv, payload: dict, org_id: int) -> dict:
     if len(g.get('nodes', [])) > 200_000:
         raise InferenceError('graph too large')
     data = graph_to_pyg(g, [], [], require_verified=False)
+    data.x = data.x[:, :int((ck.get('graph_meta') or {}).get('node_dim', data.x.shape[1]))]  # models trained before style features read the first columns only
     with torch.no_grad():
         logits = model(data)
         prob = torch.softmax(logits, -1)

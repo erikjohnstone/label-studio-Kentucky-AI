@@ -164,7 +164,8 @@ def to_pdf(plan: Plan, rotate: int = 0) -> bytes:
     for p in plan.prims:
         if p.kind == 'line':
             (ax, ay), (bx, by) = p.pts
-            ops.append(f'{p.width:.2f} w {ax:.3f} {H - ay:.3f} m {bx:.3f} {H - by:.3f} l S')
+            dash = '[' + ' '.join(f'{v:g}' for v in p.dash) + '] 0 d ' if p.dash else '[] 0 d '
+            ops.append(f'{dash}{p.width:.2f} w {ax:.3f} {H - ay:.3f} m {bx:.3f} {H - by:.3f} l S')
         elif p.kind == 'curve':
             (ax, ay), (c1x, c1y), (c2x, c2y), (bx, by) = p.pts
             ops.append(
