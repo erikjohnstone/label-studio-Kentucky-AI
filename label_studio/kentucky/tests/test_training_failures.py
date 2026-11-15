@@ -147,6 +147,35 @@ def test_worker_crash_is_retried_then_succeeds_and_infra_failure_not_charged(org
 
 
 @pytest.mark.django_db
+def test_machine_lost_long_ago_is_retried_not_timed_out(org_a, version):
+    """Found on the platform: the worker and its training process were killed (out of memory); when a worker came
+    back after the job's time limit had passed, the job was marked 'exceeded max runtime' instead of being retried
+    as an infrastructure failure."""
+    from datetime import timedelta
+
+    from django.utils import timezone
+
+    user, org = org_a
+    j = S.create_job(org, user, version, 'gnn-sage-node', 'scratch', {'epochs': 400, 'early_stopping_patience': 1000, 'max_runtime_s': 60})
+    S.authorize(j, user)
+    j = _wait(j, lambda x: x.status == JobStatus.TRAINING)
+    pid = _pid(j)
+    os.killpg(pid, signal.SIGKILL)
+    from kentucky.orchestration.providers import local as LP
+
+    LP._PROCS.pop(pid).wait(timeout=30)  # the old worker is gone too: the new one has never seen this process
+    TrainingJob.objects.filter(pk=j.pk).update(started_at=timezone.now() - timedelta(hours=2),
+                                               heartbeat_at=timezone.now() - timedelta(hours=1))
+    S.recover()  # a worker starting up later
+    j.refresh_from_db()
+    assert j.status != JobStatus.TIMED_OUT, j.error
+    assert j.status == JobStatus.QUEUED and 'exited unexpectedly' in j.error
+    assert any('retry after infrastructure failure' in (h.get('reason') or '') for h in j.status_history)
+    assert not LedgerEntry.objects.filter(reference_type='training_job', reference_id=str(j.id)).exists()  # nothing charged
+    S.request_cancel(j)  # don't run the retry in this test
+
+
+@pytest.mark.django_db
 def test_training_code_error_fails_without_retry(org_a, version):
     user, org = org_a
     j = S.create_job(org, user, version, 'gnn-sage-node', 'scratch', {'_fault': 'crash'})

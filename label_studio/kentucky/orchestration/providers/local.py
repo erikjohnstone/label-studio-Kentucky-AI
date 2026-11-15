@@ -44,13 +44,25 @@ class LocalProvider(Provider):
                 return PollResult('running')
             _PROCS.pop(pid, None)
             return PollResult('exited', rc)
-        # Adopted after a worker restart: we can't reap, only check liveness.
+        # Adopted after a worker restart: we can't reap, only check liveness. A zombie (dead, not yet reaped) is gone.
         try:
             os.kill(pid, 0)
         except ProcessLookupError:
             return PollResult('exited', None, 'process gone (adopted)')
         except PermissionError:
             return PollResult('running')
+        try:
+            with open(f'/proc/{pid}/status') as f:
+                if any(line.startswith('State:') and 'Z' in line.split()[1] for line in f):
+                    try:
+                        os.waitpid(pid, os.WNOHANG)  # reap it if it is ours
+                    except ChildProcessError:
+                        pass
+                    return PollResult('exited', None, 'process gone (adopted)')
+        except FileNotFoundError:
+            return PollResult('exited', None, 'process gone (adopted)')
+        except OSError:
+            pass
         return PollResult('running')
 
     def cancel(self, job):

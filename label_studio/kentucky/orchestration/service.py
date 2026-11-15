@@ -296,12 +296,8 @@ def supervise(job: TrainingJob):
             provider.cleanup(job)
             _bill_and_close(job, JobStatus.CANCELLED, 'cancel requested (forced)')
         return
-    # runtime limit (+grace for the runner's own deadline)
-    elapsed = (timezone.now() - job.started_at).total_seconds() if job.started_at else 0
-    if elapsed > job.max_runtime_s + int(os.environ.get('KA_RUNTIME_GRACE_S', RUNTIME_GRACE_S)):
-        provider.cleanup(job)
-        _bill_and_close(job, JobStatus.TIMED_OUT, f'exceeded max runtime {job.max_runtime_s}s')
-        return
+    # a process that is gone first: a crash or a killed machine is an infrastructure failure (retried, not
+    # charged) even when it is discovered after the time limit, e.g. by a worker restarting later
     poll = provider.poll(job)
     if poll.state != 'running':
         # process gone without a terminal event -> read any last events first
@@ -313,6 +309,12 @@ def supervise(job: TrainingJob):
             return
         provider.cleanup(job)
         _fail(job, f'Worker process exited unexpectedly (exit={poll.exit_code} {poll.detail})', retryable=True)
+        return
+    # runtime limit (+grace for the runner's own deadline)
+    elapsed = (timezone.now() - job.started_at).total_seconds() if job.started_at else 0
+    if elapsed > job.max_runtime_s + int(os.environ.get('KA_RUNTIME_GRACE_S', RUNTIME_GRACE_S)):
+        provider.cleanup(job)
+        _bill_and_close(job, JobStatus.TIMED_OUT, f'exceeded max runtime {job.max_runtime_s}s')
         return
     if job.heartbeat_at and (timezone.now() - job.heartbeat_at).total_seconds() > HEARTBEAT_STALE_S:
         provider.cleanup(job)
