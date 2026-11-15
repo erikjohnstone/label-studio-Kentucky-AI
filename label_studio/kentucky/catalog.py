@@ -47,6 +47,23 @@ CATALOG = [
         }],
     },
     {
+        'id': 'seg-dinov2-s', 'task': 'semantic_segmentation', 'family': 'cv', 'name': 'DINOv2-S segmentation (pretrained, experimental)',
+        'architecture': 'transformers.Dinov2WithRegistersModel (ViT-S/14, 4 registers) + multi-layer fusion head with a full-resolution line branch',
+        **HF, 'version': 'transformers>=4.48',
+        'description': 'Experimental. Self-supervised ViT backbone pretrained by Meta on 142M images, with a multi-scale head for thin '
+                       'linework. In our measured test (2 training sheets, CPU) it trailed LR-ASPP (mean IoU 0.10 vs 0.34), so LR-ASPP '
+                       'stays the default; try this on larger plan sets with a GPU and compare runs in Experiments.',
+        'gpu_recommended': 'T4 / A10G', 'cpu_trainable': True, 'experimental': True,
+        'inits': [{
+            'id': 'pretrained', 'label': 'DINOv2-with-registers-small (Meta, Apache-2.0)', 'hf_id': 'facebook/dinov2-with-registers-small',
+            'checkpoint_license': 'Apache-2.0 (model card + LICENSE)', 'commercial_use': True, 'commercially_deployable': True,
+            'fine_tuning_allowed': True, 'redistribution': 'allowed with license notice', 'hosting_restrictions': 'none',
+            'attribution': 'Meta AI, DINOv2 (Apache-2.0)', 'checksum': None, 'revision': '0d9846e56b43a21fa46d7f3f5070f0506a5795a9',
+            'source': 'https://huggingface.co/facebook/dinov2-with-registers-small',
+            'note': 'Pinned to an exact Hugging Face revision; downloaded at train time. Pretraining data (LVD-142M) is not redistributed.',
+        }, SCRATCH],
+    },
+    {
         'id': 'seg-segformer-b0', 'task': 'semantic_segmentation', 'family': 'cv', 'name': 'SegFormer-B0 (architecture)',
         'architecture': 'transformers.SegformerForSemanticSegmentation (mit-b0 config)', **HF, 'version': 'transformers>=4.40',
         'description': 'Transformer segmentation. Scratch init only: NVIDIA SegFormer checkpoints are released under the '
@@ -54,6 +71,23 @@ CATALOG = [
         'gpu_recommended': 'T4 / A10G', 'cpu_trainable': True,
         'inits': [SCRATCH],
         'excluded_checkpoints': [{'id': 'nvidia/mit-b0', 'reason': 'NVIDIA Source Code License - non-commercial'}],
+    },
+    {
+        'id': 'det-rtdetrv2-r18', 'task': 'instance_segmentation', 'family': 'cv', 'name': 'RT-DETRv2 R18 (pretrained)',
+        'architecture': 'transformers.RTDetrV2ForObjectDetection (ResNet-18-vd, 300 queries); outlines are boxes', **HF, 'version': 'transformers>=4.49',
+        'description': 'Real-time detection transformer pretrained on COCO. Best for counting doors, windows, fixtures and devices: '
+                       'in our measured test it found 8/8 doors and scored mAP50 0.43 vs 0.16 for Mask R-CNN from zero. Gives boxes, '
+                       'so long thin items (walls) are better outlined with an "Outline areas" model.',
+        'gpu_recommended': 'T4 / A10G (CPU ok for small sets)', 'cpu_trainable': True,
+        'inits': [{
+            'id': 'pretrained', 'label': 'RT-DETRv2-R18 COCO (PekingU, Apache-2.0)', 'hf_id': 'PekingU/rtdetr_v2_r18vd',
+            'checkpoint_license': 'Apache-2.0 (model card)', 'commercial_use': True, 'commercially_deployable': True,
+            'fine_tuning_allowed': True, 'redistribution': 'allowed with license notice', 'hosting_restrictions': 'none',
+            'attribution': 'RT-DETRv2 authors (Apache-2.0); COCO-pretrained like the torchvision models', 'checksum': None,
+            'revision': '5650961749fa93567c0d46fc7f43ea4f9e914107', 'source': 'https://huggingface.co/PekingU/rtdetr_v2_r18vd',
+            'note': 'Pinned revision; config vendored in training/configs. COCO images carry mixed Flickr licenses — same basis as '
+                    'other COCO-pretrained weights; weights license is Apache-2.0.',
+        }, SCRATCH],
     },
     {
         'id': 'inst-maskrcnn-mbv3', 'task': 'instance_segmentation', 'family': 'cv', 'name': 'Mask R-CNN MobileNetV3-FPN',

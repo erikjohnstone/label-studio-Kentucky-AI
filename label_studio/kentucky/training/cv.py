@@ -100,6 +100,12 @@ def build_semantic(catalog_id: str, num_classes: int, init: str, reporter=None):
         else:
             m = lraspp_mobilenet_v3_large(weights=None, weights_backbone=None, num_classes=num_classes)
         return m
+    if catalog_id == 'seg-dinov2-s':
+        from .dinoseg import DinoSeg
+
+        if reporter is not None and init == 'pretrained':
+            reporter.log('Loading DINOv2-with-registers-small (Apache-2.0) pretrained backbone')
+        return DinoSeg(num_classes, pretrained=(init == 'pretrained'))
     if catalog_id == 'seg-segformer-b0':
         from transformers import SegformerConfig, SegformerForSemanticSegmentation
 
@@ -110,6 +116,8 @@ def build_semantic(catalog_id: str, num_classes: int, init: str, reporter=None):
 
 
 def semantic_forward(model, catalog_id, x):
+    if catalog_id == 'seg-dinov2-s':
+        return model(x)
     if catalog_id == 'seg-segformer-b0':
         logits = model(pixel_values=x).logits
         return F.interpolate(logits, size=x.shape[-2:], mode='bilinear', align_corners=False)
@@ -242,7 +250,7 @@ def train_semantic(spec, reporter, deadline):
         _load_compatible(model, ck['state_dict'], reporter)
         if spec.get('resume') and ck.get('optimizer_state'):
             start_epoch = ck.get('epoch', 0)
-    opt = make_optimizer(model.parameters(), cfg)
+    opt = make_optimizer(model.param_groups(cfg['lr']) if hasattr(model, 'param_groups') else model.parameters(), cfg)
     sched = make_scheduler(opt, cfg)
     best, best_epoch, bad = -1.0, -1, 0
     reporter.status('TRAINING', classes=classes, train_sheets=len(train), val_sheets=len(val), class_pixel_counts=counts.tolist())
@@ -437,6 +445,10 @@ def build_maskrcnn(catalog_id, num_classes, init):
     from torchvision.models.detection.backbone_utils import mobilenet_backbone
     from torchvision.models.detection.rpn import AnchorGenerator
 
+    if catalog_id == 'det-rtdetrv2-r18':
+        from .rtdetr import RTDetrAdapter
+
+        return RTDetrAdapter(num_classes, pretrained=(init == 'pretrained'))
     if catalog_id == 'inst-maskrcnn-mbv3':
         from functools import partial
 
@@ -530,11 +542,18 @@ def predict_instances(model, gray, score_thr=0.5, classes=None):
     x = to_input(gray)
     out = model([x])[0]
     res = []
-    for b, lab, sc, mk in zip(out['boxes'], out['labels'], out['scores'], out['masks']):
+    H, W = gray.shape
+    for j, (b, lab, sc) in enumerate(zip(out['boxes'], out['labels'], out['scores'])):
         if float(sc) < score_thr:
             continue
+        if 'masks' in out:
+            mask = out['masks'][j][0].numpy() > 0.5
+        else:  # box detectors (RT-DETR): the item's outline is its box
+            mask = np.zeros((H, W), bool)
+            x0, y0, x1, y1 = [int(round(float(v))) for v in b]
+            mask[max(y0, 0):max(y1, y0 + 1), max(x0, 0):max(x1, x0 + 1)] = True
         res.append({'label': classes[int(lab) - 1] if classes else int(lab), 'score': float(sc),
-                    'box': [float(v) for v in b], 'mask': (mk[0].numpy() > 0.5)})
+                    'box': [float(v) for v in b], 'mask': mask})
     return res
 
 

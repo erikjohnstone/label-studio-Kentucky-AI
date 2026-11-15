@@ -381,6 +381,9 @@ def register_model(job, ev) -> ModelVersion:
     if sha != ev.get('sha256'):
         raise ValueError('artifact checksum mismatch')
     entry = catalog.get(job.catalog_id)
+    if entry is None:  # the worker process predates this catalog entry: deploy rule = restart the worker with the web
+        raise RuntimeError(f'This worker does not know model "{job.catalog_id}" (it is running older code). Restart the worker '
+                           '(ka_worker) after deploying, then train again.')
     base_license = job.base_model_version.license if job.base_model_version_id else None
     ok, why = catalog.deployable(job.catalog_id, job.init, base_license)
     with transaction.atomic():

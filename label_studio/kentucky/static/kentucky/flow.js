@@ -247,7 +247,7 @@
         body.replaceChildren(
           step(1, 'What should it learn?', h('div.advgrid', {}, TASKLIST.map((t) => opt(task === t, () => { task = t; cid = null; draw(); }, TASKS[t], TASKDESC[t], [rd.ready_for?.[t] ? lic('Your labels are ready', true) : lic('Needs more labels')])))),
           step(2, 'Model architecture', h('div.advgrid', {}, arches().map((a) => opt(cid === a.id, () => { cid = a.id; init = null; base = null; cfg = null; draw(); }, a.name, a.description,
-            [lic(`Code: ${a.implementation_license}`, true), lic(a.cpu_trainable ? 'Trains on our servers' : `Needs GPU (${a.gpu_recommended})`, a.cpu_trainable ? true : null)])))),
+            [lic(`Code: ${a.implementation_license}`, true), a.inits.some((i) => i.id === 'pretrained' && i.commercially_deployable) ? lic('Pretrained · OK to deploy', true) : null, a.experimental ? lic('Experimental', false) : null, lic(a.cpu_trainable ? 'Trains on our servers' : `Needs GPU (${a.gpu_recommended})`, a.cpu_trainable ? true : null)].filter(Boolean))))),
           step(3, 'Starting point', h('div.advgrid', {},
             opt(false, null, 'Kentucky AI model', cat.kentucky_models_note || 'Coming soon', [lic('Not available yet')], true),
             inits.map((i) => opt(init === i.id, () => { init = i.id; base = null; draw(); }, i.id === 'scratch' ? 'Start from zero' : i.label, i.note || i.checkpoint_license,

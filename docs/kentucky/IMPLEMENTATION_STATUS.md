@@ -21,7 +21,7 @@ Legend: **Verified** = implemented and exercised by tests and/or a real end-to-e
 | 8 | Dataset validation and versioning | Verified | Quality gates, immutable versions with content hash, group splits (no leakage), only checked sheets |
 | 9 | CV dataset export | Verified | COCO, semantic masks, RLE; `test_dataset_export.py` |
 | 10 | PyTorch Geometric export | Verified | `datasets/export.py`, graph JSON + PyG `.pt` |
-| 11 | Commercially permissible model selection | Verified | `catalog.py` with per-checkpoint license fields; non-commercial checkpoints excluded; pretrained COCO marked "legal review pending — not deployable"; advanced Train dialog |
+| 11 | Commercially permissible model selection | Verified (+ pretrained DINOv2-S and RT-DETRv2, Apache-2.0, measured) | `catalog.py` with per-checkpoint license fields; non-commercial checkpoints excluded; pretrained COCO marked "legal review pending — not deployable"; advanced Train dialog |
 | 12 | Real segmentation training | Verified | LR-ASPP and Mask R-CNN on CPU; runs 7, 9, 11 in `TEST_RESULTS.md` |
 | 13 | Real GNN training | Verified | GATv2/GraphSAGE/GCN node, GraphSAGE edge; runs 1–2 |
 | 14 | Checkpoint creation | Verified | best + periodic checkpoints, sha256, resumable |
@@ -35,7 +35,7 @@ Legend: **Verified** = implemented and exercised by tests and/or a real end-to-e
 | 22 | Billing-ready infrastructure | Verified locally / **Blocked** for live charges | billing accounts, Stripe customer + test card (verified against a mocked Stripe API), invoice item per ledger charge with the ledger key as Idempotency-Key, estimates, ledger with infra cost vs customer charge, idempotent events, monthly limit enforced before training and for hosting, reservations for running jobs, usage dashboard, history; Stripe off until `KA_STRIPE_SECRET_KEY`; prices are placeholders |
 | 23 | Organization isolation | Verified | org-prefixed storage, signed URLs, every query org-scoped; Test E + review scoping test |
 | 24 | Kentucky AI-consistent UI | Verified | v5 design system, Light + Dark, all screens (see `DESIGN_TOKENS.md`) |
-| 25 | Passing end-to-end tests | Verified | 50 passed (Tests A–F, review flow, training center, S3 storage, hosting, Lambda, Modal, Stripe) |
+| 25 | Passing end-to-end tests | Verified | 53 passed (Tests A–F, review flow, training center, S3 storage, hosting, Lambda, Modal, Stripe, base models) |
 
 ## Other prompt sections
 * Training Center wizard (§13): dataset → readiness → task → architecture → starting point → recommended or
@@ -64,7 +64,7 @@ python label_studio/manage.py migrate
 python label_studio/manage.py collectstatic --noinput
 python label_studio/manage.py runserver 0.0.0.0:8080      # app at http://localhost:8080/ka/
 python label_studio/manage.py ka_worker                   # second terminal: runs training jobs
-cd label_studio && python -m pytest kentucky/tests -q     # 50 tests
+cd label_studio && python -m pytest kentucky/tests -q     # 53 tests
 ```
 The embedded labeling engine (precise outline editor) needs the Label Studio frontend build:
 `cd web && bun install && bun --bun run vite build --config vite.config.editor.ts --base /ka/engine/`.

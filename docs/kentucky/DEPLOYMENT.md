@@ -54,4 +54,6 @@ implemented; it would reuse the Modal container with a web endpoint.
 * Web and worker are separate processes/containers: they must share file storage — set the S3/R2 backend
   (`KA_STORAGE_BACKEND=s3`) in production (a shared volume works on a single host).
 * Verified locally: image built and run as web + worker on PostgreSQL 16 with the full browser flow (see TEST_RESULTS.md).
+* Deploy rule: restart the **worker** together with the web service on every release. A worker running older code
+  cannot register models added since it started (it now fails with an explicit "restart the worker" message).
 * Not deployed yet — no hosting service is connected.

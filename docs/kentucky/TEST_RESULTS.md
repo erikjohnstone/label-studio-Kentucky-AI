@@ -8,7 +8,7 @@ Measured on the development container (4 vCPU, no GPU, Python 3.12.3, torch 2.15
 ```bash
 cd label_studio
 python -m pytest kentucky/tests -q -p no:cacheprovider
-# 50 passed
+# 53 passed
 ```
 
 | File | What it proves |
@@ -23,6 +23,7 @@ python -m pytest kentucky/tests -q -p no:cacheprovider
 | `test_lambda_provider.py` | Lambda Cloud: launch through a fake Lambda API records instance type, SSH key and a cloud-init script with no secrets; the script's agent runs locally against emulated S3 (presigned URLs only) and performs real GNN training; the orchestrator syncs events + checkpoint, registers the model, bills once and terminates the instance; a lost instance fails and is terminated; refuses without bucket or SSH key |
 | `test_modal_provider.py` | Modal: stand-in SDK whose `spawn` runs the real deployed function body (`training/modal_entry.py`) into a local volume; real training, progress mirrored, checkpoint synced, model registered, billed once, call cancelled on cleanup |
 | `test_stripe.py` | Stripe test mode with the HTTP API mocked: customer created once (idempotent), `pm_card_visa` attached as default, one invoice item per ledger charge keyed by the ledger idempotency key, sub-cent amounts as decimal cents; live keys blocked without the operator flag |
+| `test_base_models.py` | DINOv2-S segmentation and RT-DETRv2 detection train through the job pipeline, register and serve predictions; their catalog records carry Apache-2.0 licenses pinned to exact revisions |
 | `test_security.py` | **Test E** org B cannot read or change org A's drawings, datasets, annotations, jobs, checkpoints, models, deployments or API keys (API + signed file URLs) |
 | `test_training_failures.py` | **Test F** invalid datasets/selections fail validation; missing weights / unknown init / CPU-only restrictions; paid providers require operator enablement + payment method; cancellation kills the worker and bills once; timeouts terminate hung workers; worker crash retried (infra failure not charged); training-code errors fail without retry; ledger idempotency |
 
@@ -89,3 +90,19 @@ drawings — production accuracy must be measured on customer plans.
 Two production bugs found by these tests and fixed: job specs used absolute paths from the orchestrator machine
 (would break every remote provider) — now relative to the job directory; newer botocore's default streaming
 checksums corrupted uploads to S3-compatible stores (also an R2 incompatibility) — checksums now only when required.
+
+## Base model comparison (same data snapshot, same held-out test sheet, CPU)
+"Office building — Level 2", dataset version 3 (2 training sheets, 1 check sheet, 1 test sheet).
+
+| Run | Model | Start | Test result | Walls found | Doors found | CPU time |
+|---|---|---|---|---|---|---|
+| 13 | LR-ASPP MobileNetV3 | from zero | mean IoU 0.336 | 39/39 | 8/8 | 165 s |
+| 12 | DINOv2-S, first head | pretrained (Apache-2.0) | mean IoU 0.071 | 1/39 | 0/8 | 343 s |
+| 16 | DINOv2-S, multi-scale head | pretrained (Apache-2.0) | mean IoU 0.105 | 34/39 | 0/8 | 580 s |
+| 14 | Mask R-CNN MobileNetV3 | from zero | mask mAP50 0.165 | 25/39 | 0/8 | 402 s |
+| 17 | RT-DETRv2-R18 | pretrained (Apache-2.0) | mAP50 0.432 | 9/39 | 8/8 | 453 s |
+
+Conclusions on this (small, synthetic) data: RT-DETRv2 is the better item model for doors/symbols; long walls
+are better as outline areas. DINOv2 did not beat LR-ASPP and is marked experimental. Run 15 (RT-DETRv2) trained
+fine but its long-running worker predated the new catalog entry and could not register it; the worker now
+fails with an explicit "restart the worker" message and the deploy rule is documented.
