@@ -252,7 +252,7 @@
             opt(false, null, 'Kentucky AI model', cat.kentucky_models_note || 'Coming soon', [lic('Not available yet')], true),
             inits.map((i) => opt(init === i.id, () => { init = i.id; base = null; draw(); }, i.id === 'scratch' ? 'Start from zero' : i.label, i.note || i.checkpoint_license,
               [lic(i.commercially_deployable === true ? 'OK to deploy commercially' : 'Legal review pending — can’t deploy', i.commercially_deployable === true ? true : false)])),
-            mine.map((v) => opt(init === 'checkpoint' && base === v.id, () => { init = 'checkpoint'; base = v.id; draw(); }, `Your model v${v.version}`, `${v.report ? Math.round(v.report.score * 100) + '% on its test · ' : ''}trained ${fmt.date(v.created_at)}`, [lic('Yours to deploy', true)])))),
+            mine.map((v) => opt(init === 'checkpoint' && base === v.id, () => { init = 'checkpoint'; base = v.id; draw(); }, `Your model v${v.version} · ${v.dataset_name || 'plan set'}`, `${v.report ? Math.round(v.report.score * 100) + '% on its test · ' : ''}trained ${fmt.date(v.created_at)}`, [lic('Yours to deploy', true)])))),
           cfg ? step(4, 'Settings', h('p.muted.small', { style: { margin: '-4px 0 10px' } }, 'Pre-filled with what we recommend for this model. Every value is checked before training starts.'),
             h('div.advfields', {}, fields.map((k) => h('label.field', {}, h('span', {}, k.replace(/_/g, ' ')),
               h('input', { type: 'number', value: cfg[k], step: schema[k].type === 'float' ? 'any' : '1', min: schema[k].min, max: schema[k].max, oninput: (e) => { cfg[k] = schema[k].type === 'int' ? parseInt(e.target.value, 10) : parseFloat(e.target.value); } }),
@@ -269,7 +269,7 @@
         const i = arch.inits.find((x) => x.id === init);
         const bv = own.find((v) => v.id === base);
         adv = { task, catalog_id: cid, init, base_model_version_id: init === 'checkpoint' ? base : null, config: over, fullConfig: { ...cfg },
-          label: arch.name, detail: init === 'checkpoint' ? `Fine-tunes your model v${bv?.version}` : init === 'scratch' ? 'Starts from zero' : `Starts from ${i?.label}` + (Object.keys(over).length ? ` · ${Object.keys(over).length} custom setting${Object.keys(over).length > 1 ? 's' : ''}` : '') };
+          label: arch.name, detail: init === 'checkpoint' ? `Fine-tunes your model v${bv?.version} (${bv?.dataset_name || 'plan set'})` : init === 'scratch' ? 'Starts from zero' : `Starts from ${i?.label}` + (Object.keys(over).length ? ` · ${Object.keys(over).length} custom setting${Object.keys(over).length > 1 ? 's' : ''}` : '') };
         close(); refresh();
       }
       draw();

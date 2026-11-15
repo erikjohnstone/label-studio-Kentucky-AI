@@ -8,7 +8,7 @@ Measured on the development container (4 vCPU, no GPU, Python 3.12.3, torch 2.15
 ```bash
 cd label_studio
 python -m pytest kentucky/tests -q -p no:cacheprovider
-# 53 passed
+# 57 passed
 ```
 
 | File | What it proves |
