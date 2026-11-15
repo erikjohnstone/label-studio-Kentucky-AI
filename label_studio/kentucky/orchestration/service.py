@@ -109,6 +109,9 @@ def create_job(org, user, version: DatasetVersion, catalog_id: str, init: str, o
     return job
 
 
+CONTINUE_LR_FACTOR = 0.3  # continuing from your own model: smaller steps so it refines rather than relearns
+
+
 def _validate(job, org, version, entry, init, overrides, base_mv, gpu_type):
     ready = (version.readiness or {}).get('ready_for', {})
     if not ready.get(entry['task']):
@@ -130,6 +133,8 @@ def _validate(job, org, version, entry, init, overrides, base_mv, gpu_type):
         raise JobError(f'{entry["name"]} is not CPU-trainable; choose a GPU tier')
     n = len(version.splits['train'])
     cfg = tcfg.validate(entry['id'], overrides, {'train_items': n})
+    if init == 'checkpoint' and 'lr' not in (overrides or {}):
+        cfg['lr'] = float(f"{cfg['lr'] * CONTINUE_LR_FACTOR:.3g}")  # full LR undid a trained DINOv2 in one epoch (job 36)
     if 'max_runtime_s' not in (overrides or {}):
         cfg['max_runtime_s'] = pricing.runtime_cap(entry['id'], cfg, n, gpu_type)
     return cfg

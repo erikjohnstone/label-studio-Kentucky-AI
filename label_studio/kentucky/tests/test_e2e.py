@@ -177,6 +177,15 @@ def test_b_and_c_vector_gnn_and_fine_tuning(client_a, org_a):
     assert mv2.model_id == ModelVersion.objects.get(id=mv1).model_id and mv2.version == 2
     assert mv2.license['base_model_version'] == mv1
     assert any('Loaded' in (h.get('log') or '') for h in job2['metrics_history'])
+    # continuing scores the starting model first and never ends below it; smaller steps by default
+    import re
+
+    from kentucky.orchestration.service import CONTINUE_LR_FACTOR
+    from kentucky.training.config import recommended
+    start = next(float(re.search(r'scores ([0-9.]+)', h['log']).group(1)) for h in job2['metrics_history'] if 'Starting model scores' in (h.get('log') or ''))
+    assert job2['final_metrics']['val']['macro_f1'] >= start - 1e-6
+    assert 'kept_starting_model' in job2['final_metrics']
+    assert job2['config']['lr'] == pytest.approx(recommended('gnn-gat-node')['lr'] * CONTINUE_LR_FACTOR, rel=0.01)
     cmp = client_a.get(f'/api/ka/jobs/compare/?ids={job["id"]},{job2["id"]}').json()
     assert len(cmp['rows']) == 2 and 'epochs' in cmp['config_differences']
     r = client_a.post(f'/api/ka/deployments/{dep["id"]}/set-version/', {'model_version_id': mv2.id}, format='json').json()

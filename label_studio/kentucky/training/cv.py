@@ -253,6 +253,11 @@ def train_semantic(spec, reporter, deadline):
     opt = make_optimizer(model.param_groups(cfg['lr']) if hasattr(model, 'param_groups') else model.parameters(), cfg)
     sched = make_scheduler(opt, cfg)
     best, best_epoch, bad = -1.0, -1, 0
+    if spec.get('base_checkpoint') and not start_epoch:  # continuing: the result can never be worse than where it started
+        _, rep = evaluate_semantic(model, cid, val, classes, weights)
+        best, best_epoch = rep['mean_iou'] or 0.0, 0
+        save_checkpoint(out / 'best.pt', model, spec, classes, 0, rep)
+        reporter.log(f'Starting model scores {best:.3f} mean IoU on the check sheets; kept unless training beats it')
     reporter.status('TRAINING', classes=classes, train_sheets=len(train), val_sheets=len(val), class_pixel_counts=counts.tolist())
     for epoch in range(start_epoch, cfg['epochs']):
         check_cancel(spec['job_dir'])
@@ -304,7 +309,7 @@ def train_semantic(spec, reporter, deadline):
     reporter.status('EVALUATING')
     ck = torch.load(out / 'best.pt', map_location='cpu', weights_only=False)
     model.load_state_dict(ck['state_dict'])
-    final = {'best_epoch': best_epoch, 'task': 'semantic_segmentation', 'classes': classes}
+    final = {'best_epoch': best_epoch, 'kept_starting_model': best_epoch == 0, 'task': 'semantic_segmentation', 'classes': classes}
     for name, items in (('val', val), ('test', test)):
         if not items:
             continue
@@ -580,6 +585,11 @@ def train_instance(spec, reporter, deadline):
     warmup = 50
     step = 0
     best, best_epoch, bad = -1.0, -1, 0
+    if spec.get('base_checkpoint'):  # continuing: the result can never be worse than where it started
+        rep = evaluate_instance(model, val, classes, cfg.get('score_threshold', 0.5))
+        best, best_epoch = rep['mAP@50'] or 0.0, 0
+        save_checkpoint(out / 'best.pt', model, spec, classes, 0, rep)
+        reporter.log(f'Starting model scores {best:.3f} mAP50 on the check sheets; kept unless training beats it')
     reporter.status('TRAINING', classes=classes, train_sheets=len(train), val_sheets=len(val))
     for epoch in range(cfg['epochs']):
         check_cancel(spec['job_dir'])
@@ -643,7 +653,7 @@ def train_instance(spec, reporter, deadline):
     reporter.status('EVALUATING')
     ck = torch.load(out / 'best.pt', map_location='cpu', weights_only=False)
     model.load_state_dict(ck['state_dict'])
-    final = {'best_epoch': best_epoch, 'task': 'instance_segmentation', 'classes': classes}
+    final = {'best_epoch': best_epoch, 'kept_starting_model': best_epoch == 0, 'task': 'instance_segmentation', 'classes': classes}
     final['val'] = evaluate_instance(model, val, classes, cfg.get('score_threshold', 0.5))
     if test:
         final['test'] = evaluate_instance(model, test, classes, cfg.get('score_threshold', 0.5))

@@ -386,7 +386,7 @@
         deployable ? h('button.btn.primary', { onclick: () => KA.deployDialog(mv.id, `${ds.name} model`) }, 'Use this model →') : h('span.pill.warn', {}, 'Not ready to use yet'))),
       h('div.runwrap', {}, view, h('div.runcol', {}, items.slice(0, 3).map(card),
         h('div.adv', {}, h('span', { html: '' }, svgEl('svg', { viewBox: '0 0 24 24' }, svgEl('path', { d: 'M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z' }))),
-          h('div', {}, h('b', {}, rc.ready_to_use ? 'What would make it better' : 'What it needs'), h('p', {}, rc.advice || 'There were no checked items on its test sheet to score against. Check one or two more sheets, then train again — we hold one back to test on.'))))),
+          h('div', {}, h('b', {}, rc.ready_to_use ? 'What would make it better' : 'What it needs'), j.final_metrics?.kept_starting_model ? h('p', {}, h('b', {}, 'This round did not beat the model it started from, so it kept that model’s skills. ')) : null, h('p', {}, rc.advice || 'There were no checked items on its test sheet to score against. Check one or two more sheets, then train again — we hold one back to test on.'))))),
       h('div.engfoot', {}, lbl('For engineers'), h('span', {}, Object.entries(hl).filter(([, v]) => typeof v === 'number').map(([k, v]) => `${k.replace(/_/g, ' ')} ${v.toFixed(2)}`).join(' · ') || 'no test score', ` · ${j.catalog_id} · ${fmt.dur(j.runtime_s)}`)),
       KA.techDetails(j));
     // the test sheet: what it found vs your labels

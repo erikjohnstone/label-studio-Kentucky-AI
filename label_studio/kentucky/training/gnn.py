@@ -186,6 +186,10 @@ def train_gnn(spec, reporter, deadline):
     loader = DataLoader(train, batch_size=cfg['batch_size'], shuffle=True)
     reporter.status('TRAINING', classes=classes, train_graphs=len(train), val_graphs=len(val), label_counts=counts.tolist())
     best, best_epoch, bad = -1.0, -1, 0
+    if spec.get('base_checkpoint'):  # continuing: the result can never be worse than where it started
+        best, best_epoch = evaluate(model, val, task, classes).get('macro_f1') or 0.0, 0
+        save(out / 'best.pt', model, spec, classes, meta, 0)
+        reporter.log(f'Starting model scores {best:.3f} macro-F1 on the check graphs; kept unless training beats it')
     for epoch in range(cfg['epochs']):
         check_cancel(spec['job_dir'])
         if time.time() > deadline:
@@ -233,7 +237,7 @@ def train_gnn(spec, reporter, deadline):
     reporter.status('EVALUATING')
     ck = torch.load(out / 'best.pt', map_location='cpu', weights_only=False)
     model.load_state_dict(ck['state_dict'])
-    final = {'best_epoch': best_epoch, 'task': task, 'classes': classes, 'val': evaluate(model, val, task, classes)}
+    final = {'best_epoch': best_epoch, 'kept_starting_model': best_epoch == 0, 'task': task, 'classes': classes, 'val': evaluate(model, val, task, classes)}
     if test:
         final['test'] = evaluate(model, test, task, classes)
     hl = final.get('test') if test and final['test'].get('n') else final['val']
