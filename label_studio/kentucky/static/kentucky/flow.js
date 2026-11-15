@@ -68,7 +68,7 @@
     const cta = (t, href) => h('a.btn.primary.lg', { href }, t, ' →');
     const second = (t, href) => h('a.btn.lg.ghostd', { href }, t);
     if (next.kind === 'review') {
-      title = 'Finish checking'; meta = `The AI marked items on ${d.name}. ${plural(next.pending, 'suggestion')} left to check.`;
+      title = 'Finish checking'; meta = `${plural(next.pending, 'AI suggestion')} left to check on sheet ${next.sheet_pos}. Keep what is right — about ${Math.max(1, Math.round(next.pending / 12))} min.`;
       actions = [cta('Continue checking', `/ka/markup/${next.sheet}/`), d.done ? second("Train with what's done", `/ka/train/?dataset=${d.id}`) : null];
     } else if (next.kind === 'check' || next.kind === 'label') {
       title = next.kind === 'label' ? 'Mark up your plans' : 'Check your sheets';
@@ -314,13 +314,13 @@
     const hl = j.final_metrics?.headline || {};
     mount(
       h('div.headrow', {}, h('div', {}, h('span.stamp', {}, h('i'), `Model v${mv ? mv.version : '?'} · tested · ${fmt.date(j.finished_at)}`),
-        h('h1.h1', {}, lead ? `Model v${mv?.version ?? ''} finds ${Math.round(lead.score * 10)} of every 10 ${lead.name}.` : 'Training finished.', h('br'), h('span.dim', {}, `Tested on ${nice(test.name)} — a sheet it never saw.`))),
+        h('h1.h1', {}, lead ? `Model v${mv?.version ?? ''} finds ${Math.round(lead.score * 10)} of every 10 ${lead.name}.` : 'Training finished.', h('br'), h('span.dim', {}, lead ? `Tested on ${nice(test.name)} — a sheet it never saw.` : 'But there was nothing checked to test it on.'))),
       h('div.row', { style: { gap: '10px' } }, h('a.btn', { href: `/ka/projects/${ds.id}/` }, 'Add more examples'),
         deployable ? h('button.btn.primary', { onclick: () => KA.deployDialog(mv.id, `${ds.name} model`) }, 'Use this model →') : h('span.pill.warn', {}, 'Not ready to use yet'))),
       h('div.runwrap', {}, view, h('div.runcol', {}, items.slice(0, 3).map(card),
         h('div.adv', {}, h('span', { html: '' }, svgEl('svg', { viewBox: '0 0 24 24' }, svgEl('path', { d: 'M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z' }))),
-          h('div', {}, h('b', {}, rc.ready_to_use ? 'What would make it better' : 'What it needs'), h('p', {}, rc.advice))))),
-      h('div.engfoot', {}, lbl('For engineers'), h('span', {}, Object.entries(hl).map(([k, v]) => `${k.replace(/_/g, ' ')} ${typeof v === 'number' ? v.toFixed(2) : v}`).join(' · '), ` · ${j.catalog_id} · ${fmt.dur(j.runtime_s)}`)),
+          h('div', {}, h('b', {}, rc.ready_to_use ? 'What would make it better' : 'What it needs'), h('p', {}, rc.advice || 'There were no checked items on its test sheet to score against. Check one or two more sheets, then train again — we hold one back to test on.'))))),
+      h('div.engfoot', {}, lbl('For engineers'), h('span', {}, Object.entries(hl).filter(([, v]) => typeof v === 'number').map(([k, v]) => `${k.replace(/_/g, ' ')} ${v.toFixed(2)}`).join(' · ') || 'no test score', ` · ${j.catalog_id} · ${fmt.dur(j.runtime_s)}`)),
       KA.techDetails(j));
     // the test sheet: what it found vs your labels
     try {

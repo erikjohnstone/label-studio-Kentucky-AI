@@ -63,7 +63,12 @@ def create_version(dataset, user=None, seed: int = 0, strategy: str = 'group', r
 
     tax = current_taxonomy(dataset)
     report = readiness(dataset, tax)
-    sheets = list(dataset.sheets.select_related('document').order_by('id'))
+    # only sheets someone has checked go into a version: an unchecked sheet would teach "no walls here" and could
+    # end up as the test sheet with nothing to score against
+    checked = set(CanonicalObject.objects.filter(dataset=dataset, deleted=False, review_status=Review.APPROVED).values_list('sheet_id', flat=True))
+    checked |= set(CanonicalObject.objects.filter(dataset=dataset, deleted=False, is_negative=True).exclude(review_status=Review.REJECTED).values_list('sheet_id', flat=True))
+    checked |= set(SheetGraph.objects.filter(sheet__dataset=dataset, is_current=True, review_status=Review.APPROVED).values_list('sheet_id', flat=True))
+    sheets = [s for s in dataset.sheets.select_related('document').order_by('id') if s.id in checked]
     splits = group_split(sheets, ratios, seed, strategy)
     assert_no_leakage(splits)
     objs = CanonicalObject.objects.filter(dataset=dataset, deleted=False, review_status=Review.APPROVED).order_by('id')

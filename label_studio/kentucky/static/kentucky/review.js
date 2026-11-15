@@ -79,7 +79,7 @@
   }
   function focusOn(poly) {
     const [x0, y0, x1, y1] = bbox(poly), a = aspect();
-    const w = Math.max((x1 - x0) * 7, ((y1 - y0) * 7) / a, W * 0.3);
+    const w = Math.max((x1 - x0) * 7, ((y1 - y0) * 7) / a, W * 0.45);
     camera({ x: (x0 + x1) / 2 - w / 2, y: (y0 + y1) / 2 - (w * a) / 2, w });
   }
   const toWorld = (cx, cy) => { const r = stage.getBoundingClientRect(), v = S.view; return [v.x + ((cx - r.left) / r.width) * v.w, v.y + ((cy - r.top) / r.height) * v.w * aspect()]; };

@@ -147,4 +147,4 @@ html, body { overflow: hidden; }
 .keys kbd { justify-self: start; }
 @media (max-width: 1100px) { .rv { grid-template-columns: minmax(0, 1fr) 320px; } .rv-seg { display: none; } .rv-totals div { min-width: 70px; padding: 7px 10px 0; } }
 
-body[data-page="markup"] .toasts { bottom: 100px; }
+body[data-page="markup"] .toasts { bottom: auto; top: 68px; left: calc((100% - 368px) / 2); }

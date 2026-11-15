@@ -529,3 +529,5 @@ polygon.k { stroke-linejoin: round; vector-effect: non-scaling-stroke; }
 .engfoot { display: flex; align-items: center; gap: 18px; color: var(--ink-3); font-size: 12.5px; }
 .engfoot details summary { cursor: pointer; }
 .runcol .bigstat { flex: 1; }
+:root[data-theme="dark"] .dpanel { box-shadow: 0 0 0 1px var(--line); }
+:root[data-theme="dark"] .brand .m, :root[data-theme="dark"] .rv-mark { box-shadow: 0 0 0 1px var(--line-2); }

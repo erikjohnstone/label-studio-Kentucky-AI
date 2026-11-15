@@ -125,7 +125,14 @@ def report_card(final_metrics: dict, task: str) -> dict | None:
     """Plain-language accuracy summary for contractors, derived only from measured test/validation metrics."""
     if not final_metrics:
         return None
-    split_name = 'test' if final_metrics.get('test') and (final_metrics['test'].get('n') or final_metrics['test'].get('per_class')) else 'val'
+    for split_name in ('test', 'val'):
+        rc = _report_card(final_metrics, task, split_name)
+        if rc:
+            return rc
+    return None
+
+
+def _report_card(final_metrics: dict, task: str, split_name: str) -> dict | None:
     sp = final_metrics.get(split_name) or {}
     items = []
     if task == 'semantic_segmentation':
