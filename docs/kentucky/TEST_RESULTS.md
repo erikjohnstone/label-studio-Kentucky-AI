@@ -117,7 +117,8 @@ scan skew, verified to 0.1 px); every run started from Train → Customize; same
 
 | Model | Start | Test result | Walls | Doors | Windows | CPU time |
 |---|---|---|---|---|---|---|
-| DINOv2-S segmentation | pretrained (Apache-2.0) | **mean IoU 0.744** | 47/47 | 12/12 | 11/11 | 39 min |
+| **DINOv2-S segmentation** | your DINOv2 v1 (one-click Train) | **mean IoU 0.767** | 47/47 | 12/12 | 11/11 | 41 min |
+| DINOv2-S segmentation | pretrained (Apache-2.0) | mean IoU 0.744 | 47/47 | 12/12 | 11/11 | 39 min |
 | LR-ASPP MobileNetV3 | from zero | mean IoU 0.627 | 47/47 | 12/12 | 11/11 | 10 min |
 | **D-FINE-S** | pretrained (Apache-2.0) | **mAP50 0.954** | 45/47 | 12/12 | 11/11 | 13 min |
 | **D-FINE-S** | your vector-plan model (fine-tuned) | **mAP50 0.963** | 46/47 | 12/12 | 11/11 | 8 min |
@@ -156,7 +157,10 @@ picks by measurement: DINOv2-S for scanned sets with 5+ checked sheets, else LR-
 architecture already trained on the set); it continued from the newest model anywhere in the org instead of this
 plan set's own; time estimates were 1.5-10x high (now calibrated on 18 real runs, test pins them) and assumed 12
 crops per sheet that jobs never used; every job had a fixed 1 h limit although a 9-sheet DINOv2 run takes 53 min
-(the limit now scales with the job, 1-24 h); "How it's improving" showed "v1 → v1" for two architectures.
+(the limit now scales with the job, 1-24 h); "How it's improving" showed "v1 → v1" for two architectures. Continuing a
+trained DINOv2 at the full learning rate dropped its check score from 0.72 to 0.45 in one epoch (it recovered to
+0.735 and a better test score, 0.767, but only by luck of a long run): continuing now scores the starting model
+first and keeps it unless training beats it, at 0.3x the learning rate.
 
 **Transfer between plan types:** D-FINE-S fine-tuned on the scans from the model trained on vector plans reached
 mAP50 0.963 in 8 min, better and faster than starting from the public COCO weights (0.954, 13 min) — a model
