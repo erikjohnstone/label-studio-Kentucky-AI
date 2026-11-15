@@ -77,8 +77,9 @@ CATALOG = [
         'architecture': 'transformers.DFineForObjectDetection (HGNetV2-S backbone, fine-grained box refinement); outlines are boxes',
         **HF, 'version': 'transformers>=4.52',
         'description': 'DETR-family detector with fine-grained box refinement, 10M parameters. Measured on 10 scanned plans: mAP50 0.95 '
-                       '(doors 12/12, windows 11/11, walls 45/47) vs 0.75 for RT-DETRv2, and faster to train. Gives boxes.',
-        'gpu_recommended': 'T4 / A10G (CPU ok for small sets)', 'cpu_trainable': True, 'badge': 'Recommended', 'recommended': True,
+                       '(doors 12/12, windows 11/11, walls 45/47) vs 0.75 for RT-DETRv2. On 13 vector plans it scored 0.78 vs 0.89, '
+                       'so it is the pick for scanned plan sets. Gives boxes.',
+        'gpu_recommended': 'T4 / A10G (CPU ok for small sets)', 'cpu_trainable': True, 'badge': 'Best for scans', 'best_for': 'scan',
         'inits': [{
             'id': 'pretrained', 'label': 'D-FINE-S COCO (ustc-community, Apache-2.0)', 'hf_id': 'ustc-community/dfine-small-coco',
             'checkpoint_license': 'Apache-2.0 (model card)', 'commercial_use': True, 'commercially_deployable': True,
@@ -91,9 +92,10 @@ CATALOG = [
     {
         'id': 'det-rtdetrv2-r18', 'task': 'instance_segmentation', 'family': 'cv', 'name': 'RT-DETRv2 R18 (pretrained)',
         'architecture': 'transformers.RTDetrV2ForObjectDetection (ResNet-18-vd, 300 queries); outlines are boxes', **HF, 'version': 'transformers>=4.49',
-        'description': 'Real-time detection transformer pretrained on COCO. Measured: mAP50 0.75 on 10 scanned plans (doors 12/12), '
-                       '0.43 vs 0.16 for Mask R-CNN from zero on a small vector set. D-FINE-S scored higher on the same scans. Gives boxes.',
-        'gpu_recommended': 'T4 / A10G (CPU ok for small sets)', 'cpu_trainable': True,
+        'description': 'Real-time detection transformer pretrained on COCO. Measured on 13 vector plans: mAP50 0.89 (doors 34/34, windows '
+                       '22/22) vs 0.78 for D-FINE-S; on 10 scanned plans 0.75 vs 0.95, so it is the pick for vector PDF / DXF plan sets. '
+                       'Gives boxes.',
+        'gpu_recommended': 'T4 / A10G (CPU ok for small sets)', 'cpu_trainable': True, 'badge': 'Best for vector PDFs', 'best_for': 'vector',
         'inits': [{
             'id': 'pretrained', 'label': 'RT-DETRv2-R18 COCO (PekingU, Apache-2.0)', 'hf_id': 'PekingU/rtdetr_v2_r18vd',
             'checkpoint_license': 'Apache-2.0 (model card)', 'commercial_use': True, 'commercially_deployable': True,

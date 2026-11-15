@@ -233,7 +233,7 @@
       const loadDefaults = async () => { const r = await api(`training/defaults/?catalog_id=${cid}&train_items=${Math.max(1, hp.done)}`); defaults = r.config; schema = r.schema; enums = r.enums; if (!cfg || cfg._cid !== cid) cfg = { ...r.config, _cid: cid }; };
       const arches = () => cat.open_models.filter((m) => m.task === task);
       const draw = async () => {
-        if (!cid || !arches().some((a) => a.id === cid)) { cid = (arches().find((a) => a.recommended) || arches().find((a) => a.cpu_trainable && !(a.min_sheets > hp.done)) || arches()[0])?.id; init = null; cfg = null; }
+        if (!cid || !arches().some((a) => a.id === cid)) { const kind = hp.scanned * 2 > hp.sheets.length ? 'scan' : 'vector'; cid = (arches().find((a) => a.best_for === kind) || arches().find((a) => a.recommended) || arches().find((a) => a.cpu_trainable && !(a.min_sheets > hp.done)) || arches()[0])?.id; init = null; cfg = null; }
         if (cid && (!cfg || cfg._cid !== cid)) await loadDefaults();
         const arch = arches().find((a) => a.id === cid);
         const inits = arch ? arch.inits.filter((i) => i.id !== 'checkpoint') : [];

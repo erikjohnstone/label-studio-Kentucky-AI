@@ -266,7 +266,7 @@ def home(request):
         rc = TA.report_card(mv.metrics, mv.model.task) if mv else None
         live = Deployment.objects.filter(organization=org, active_version__dataset_version__dataset=d, status='active').first()
         row = {'id': d.id, 'name': d.name, 'created_at': d.created_at, 'sheets': st, 'counts': counts,
-               'objects': sum(counts.values()), 'pending': sum(pend_by.values()),
+               'objects': sum(counts.values()), 'pending': sum(pend_by.values()), 'scanned': sum(1 for s in sheets if not s.has_vector),
                'done': sum(1 for x in st if x['state'] == 'done'), 'cover': _drawing(cover) if cover else None,
                'model': {'id': mv.id, 'version': mv.version, 'score': rc['score'] if rc else None, 'ready': bool(rc and rc['ready_to_use']),
                          'job': mv.training_job_id} if mv else None,
