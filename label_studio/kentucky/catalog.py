@@ -34,8 +34,8 @@ CATALOG = [
     {
         'id': 'seg-lraspp-mbv3', 'task': 'semantic_segmentation', 'family': 'cv', 'name': 'LR-ASPP MobileNetV3-Large',
         'architecture': 'torchvision.models.segmentation.lraspp_mobilenet_v3_large', **TORCHVISION, 'version': 'torchvision 0.29',
-        'description': 'Lightweight semantic segmentation; fast on CPU, good baseline for walls / finishes / rooms.',
-        'gpu_recommended': 'none (CPU ok) / T4', 'cpu_trainable': True,
+        'description': 'Fast, lightweight model for outline areas (walls, rooms, slabs, finish areas). MobileNetV3 + LR-ASPP was designed for mobile devices (Howard et al., 2019): it trains in minutes on a CPU and is cheap to run, but its coarse output can soften very thin lines and small details. Use it for a quick first model, for bold high-contrast areas, or when you retrain often. Works on scans and vector PDFs. Starts from zero (deployable); the torchvision COCO start needs a license review.',
+        'gpu_recommended': 'none (CPU ok) / T4', 'badge': 'Fastest', 'cpu_trainable': True,
         'inits': [SCRATCH, {
             'id': 'pretrained', 'label': 'torchvision COCO (VOC labels) checkpoint',
             'weights_enum': 'LRASPP_MobileNet_V3_Large_Weights.COCO_WITH_VOC_LABELS_V1',
@@ -50,11 +50,8 @@ CATALOG = [
         'id': 'seg-dinov2-s', 'task': 'semantic_segmentation', 'family': 'cv', 'name': 'DINOv2-S segmentation (pretrained)',
         'architecture': 'transformers.Dinov2WithRegistersModel (ViT-S/14, 4 registers) + multi-layer fusion head with a full-resolution line branch',
         **HF, 'version': 'transformers>=4.48',
-        'description': 'Self-supervised ViT backbone pretrained by Meta on 142M images, with a multi-scale head for thin linework. '
-                       'Measured: on 10 scanned plans (8 for training) mean IoU 0.74 vs 0.63 for LR-ASPP, every item found; on a '
-                       '2-sheet set it trailed (0.10 vs 0.34); on 13 clean vector plans it tied (0.65 vs 0.67). Use it for scans once you '
-                       'have 5+ checked sheets; about 4-9x the training time.',
-        'gpu_recommended': 'T4 / A10G', 'cpu_trainable': True, 'badge': 'Best for scans (5+ sheets)', 'best_for': 'scan', 'min_sheets': 5,
+        'description': "Outline areas when you have few labeled sheets or very mixed drawings. Meta's DINOv2 (Oquab et al., 2023) learned general-purpose image features from 142M images without labels; the paper shows those features segment well with little task-specific training. That makes it a strong choice for scans of varying quality, hand-marked sets and unusual drawing styles. Slower and larger than LR-ASPP; GPU recommended. Apache-2.0 weights, deployable.",
+        'gpu_recommended': 'T4 / A10G', 'cpu_trainable': True, 'badge': 'Best with few labels', 'best_for': 'scan', 'min_sheets': 5,
         'inits': [{
             'id': 'pretrained', 'label': 'DINOv2-with-registers-small (Meta, Apache-2.0)', 'hf_id': 'facebook/dinov2-with-registers-small',
             'checkpoint_license': 'Apache-2.0 (model card + LICENSE)', 'commercial_use': True, 'commercially_deployable': True,
@@ -67,8 +64,7 @@ CATALOG = [
     {
         'id': 'seg-segformer-b0', 'task': 'semantic_segmentation', 'family': 'cv', 'name': 'SegFormer-B0 (architecture)',
         'architecture': 'transformers.SegformerForSemanticSegmentation (mit-b0 config)', **HF, 'version': 'transformers>=4.40',
-        'description': 'Transformer segmentation. Scratch init only: NVIDIA SegFormer checkpoints are released under the '
-                       'NVIDIA Source Code License (non-commercial) and are EXCLUDED from the commercial catalog.',
+        'description': "Outline areas once you have a large labeled set (thousands of sheets). SegFormer (Xie et al., 2021) uses a hierarchical transformer with no fixed positional encoding, so it copes well with sheets of different sizes and scales. Here it can only start from zero: NVIDIA's pretrained weights are licensed for non-commercial research only, so they are excluded. Without pretraining it needs far more data than DINOv2 or LR-ASPP.",
         'gpu_recommended': 'T4 / A10G', 'cpu_trainable': True,
         'inits': [SCRATCH],
         'excluded_checkpoints': [{'id': 'nvidia/mit-b0', 'reason': 'NVIDIA Source Code License - non-commercial'}],
@@ -77,10 +73,8 @@ CATALOG = [
         'id': 'det-dfine-s', 'task': 'instance_segmentation', 'family': 'cv', 'name': 'D-FINE-S (pretrained)',
         'architecture': 'transformers.DFineForObjectDetection (HGNetV2-S backbone, fine-grained box refinement); outlines are boxes',
         **HF, 'version': 'transformers>=4.52',
-        'description': 'DETR-family detector with fine-grained box refinement, 10M parameters. Measured on 10 scanned plans: mAP50 0.95 '
-                       '(doors 12/12, windows 11/11, walls 45/47) vs 0.75 for RT-DETRv2. On 13 vector plans it scored 0.78 vs 0.89, '
-                       'so it is the pick for scanned plan sets; fine-tuned from a vector-plan model it reached 0.96 in 8 min. Gives boxes.',
-        'gpu_recommended': 'T4 / A10G (CPU ok for small sets)', 'cpu_trainable': True, 'badge': 'Best for scans', 'best_for': 'scan',
+        'description': 'Counting items where exact position matters: doors, fixtures, devices, diffusers, small symbols. D-FINE (Peng et al., 2024) predicts each box edge as a refined probability distribution instead of a single number, which the paper shows gives more precise boxes than earlier real-time detectors, especially for small objects. Small (10M parameters), fast to train. Gives a box per item, not an exact outline. Apache-2.0 weights, deployable.',
+        'gpu_recommended': 'T4 / A10G (CPU ok for small sets)', 'cpu_trainable': True, 'badge': 'Most precise boxes', 'best_for': 'scan',
         'inits': [{
             'id': 'pretrained', 'label': 'D-FINE-S COCO (ustc-community, Apache-2.0)', 'hf_id': 'ustc-community/dfine-small-coco',
             'checkpoint_license': 'Apache-2.0 (model card)', 'commercial_use': True, 'commercially_deployable': True,
@@ -94,9 +88,8 @@ CATALOG = [
         'id': 'det-rfdetr-s', 'task': 'instance_segmentation', 'family': 'cv', 'name': 'RF-DETR-S (pretrained)',
         'architecture': 'transformers.RfDetrForObjectDetection (DINOv2-S windowed backbone, LW-DETR decoder); outlines are boxes',
         **HF, 'version': 'transformers>=5.8',
-        'description': 'Roboflow detector on a DINOv2 backbone, 32M parameters, state of the art on COCO and on the RF100-VL '
-                       'domain-transfer benchmark. Not yet measured on plans here; heavier on CPU than D-FINE-S. Gives boxes.',
-        'gpu_recommended': 'T4 / A10G', 'cpu_trainable': True, 'experimental': True,
+        'description': 'Counting items on drawings that look nothing like photographs. RF-DETR (Roboflow, 2025) pairs a DINOv2 backbone with a lightweight DETR decoder and was built and tested for transfer to new domains: it leads the RF100-VL benchmark of 100 varied datasets (aerial, medical, documents, industrial). Good for unusual symbol libraries and mixed scan quality. Larger and more memory-hungry than D-FINE; GPU recommended. Small size is Apache-2.0, deployable (the XL / 2XL detection sizes use a different license and are not offered).',
+        'gpu_recommended': 'T4 / A10G', 'badge': 'Built for new domains', 'cpu_trainable': True, 'experimental': True,
         'inits': [{
             'id': 'pretrained', 'label': 'RF-DETR-S COCO (Roboflow, Apache-2.0)', 'hf_id': 'Roboflow/rf-detr-small',
             'checkpoint_license': 'Apache-2.0 (model card)', 'commercial_use': True, 'commercially_deployable': True,
@@ -110,10 +103,8 @@ CATALOG = [
     {
         'id': 'det-rtdetrv2-r18', 'task': 'instance_segmentation', 'family': 'cv', 'name': 'RT-DETRv2 R18 (pretrained)',
         'architecture': 'transformers.RTDetrV2ForObjectDetection (ResNet-18-vd, 300 queries); outlines are boxes', **HF, 'version': 'transformers>=4.49',
-        'description': 'Real-time detection transformer pretrained on COCO. Measured on 13 vector plans: mAP50 0.89 (doors 34/34, windows '
-                       '22/22) vs 0.78 for D-FINE-S; on 10 scanned plans 0.75 vs 0.95, so it is the pick for vector PDF / DXF plan sets. '
-                       'Gives boxes.',
-        'gpu_recommended': 'T4 / A10G (CPU ok for small sets)', 'cpu_trainable': True, 'badge': 'Best for vector PDFs', 'best_for': 'vector',
+        'description': 'General-purpose item counter and a dependable default. RT-DETRv2 (Lv et al., 2024) is the improved version of RT-DETR, the first real-time end-to-end detection transformer: no anchor boxes or duplicate-removal step, with training refinements for flexible deployment. Well supported and fast to run. Gives a box per item, not an exact outline. Apache-2.0 weights, deployable.',
+        'gpu_recommended': 'T4 / A10G (CPU ok for small sets)', 'cpu_trainable': True, 'badge': 'Dependable default', 'best_for': 'vector',
         'inits': [{
             'id': 'pretrained', 'label': 'RT-DETRv2-R18 COCO (PekingU, Apache-2.0)', 'hf_id': 'PekingU/rtdetr_v2_r18vd',
             'checkpoint_license': 'Apache-2.0 (model card)', 'commercial_use': True, 'commercially_deployable': True,
@@ -127,13 +118,13 @@ CATALOG = [
     {
         'id': 'inst-maskrcnn-mbv3', 'task': 'instance_segmentation', 'family': 'cv', 'name': 'Mask R-CNN MobileNetV3-FPN',
         'architecture': 'torchvision.models.detection.MaskRCNN + mobilenet_v3_large FPN backbone', **TORCHVISION, 'version': 'torchvision 0.29',
-        'description': 'Instance segmentation (doors, windows, fixtures, devices) with boxes + masks. CPU-trainable at small sizes.',
-        'gpu_recommended': 'T4 / A10G', 'cpu_trainable': True, 'inits': [SCRATCH],
+        'description': "Counting items when you also need each item's true shape, not just a box: irregular equipment, fixtures, odd-shaped devices. Mask R-CNN (He et al., 2017) finds each item and then draws its pixel outline. This lightweight version starts from zero, so it needs more labeled sheets than the pretrained detectors before it is reliable. CPU-trainable on small sets.",
+        'gpu_recommended': 'T4 / A10G', 'badge': 'Gives exact shapes', 'cpu_trainable': True, 'inits': [SCRATCH],
     },
     {
         'id': 'inst-maskrcnn-r50-v2', 'task': 'instance_segmentation', 'family': 'cv', 'name': 'Mask R-CNN ResNet-50-FPN v2',
         'architecture': 'torchvision.models.detection.maskrcnn_resnet50_fpn_v2', **TORCHVISION, 'version': 'torchvision 0.29',
-        'description': 'Higher-capacity instance segmentation; GPU recommended.', 'gpu_recommended': 'A10G / A100', 'cpu_trainable': False,
+        'description': 'Higher-capacity Mask R-CNN for item shapes on large labeled sets. Same idea as the MobileNet version (box plus pixel outline per item) with a stronger ResNet-50 backbone; needs a GPU. Can start from zero (deployable). torchvision\'s COCO weights are offered only after a license review: torchvision states its weights "may have their own licenses or terms and conditions derived from the dataset used for training".', 'gpu_recommended': 'A10G / A100', 'cpu_trainable': False,
         'inits': [SCRATCH, {
             'id': 'pretrained', 'label': 'torchvision COCO checkpoint', 'weights_enum': 'MaskRCNN_ResNet50_FPN_V2_Weights.COCO_V1',
             'checkpoint_license': 'Distributed with torchvision (BSD-3-Clause); COCO-trained', 'commercial_use': 'review_required',
@@ -145,34 +136,31 @@ CATALOG = [
     {
         'id': 'gnn-gps-node', 'task': 'node_classification', 'family': 'gnn', 'name': 'Graph transformer (GPS + GINE)',
         'architecture': 'torch_geometric GPSConv(GINEConv with edge features, multi-head global attention) x3 + MLP', **PYG, 'version': 'torch_geometric 2.8',
-        'description': 'Each line sees both its touching neighbours (with how they touch, cross or run parallel) and every other line '
-                       'on the sheet through attention. Recommended by the base-model research for CAD symbol spotting. No public '
-                       'pretrained checkpoint is licensed for commercial use, so it trains from zero or from your versions. '
-                       'Measured on 13 vector plans: macro-F1 1.00 vs 0.99 GATv2 / GCN and 0.99 GraphSAGE, in 12 s on CPU.',
-        'gpu_recommended': 'none (CPU ok)', 'cpu_trainable': True, 'inits': [SCRATCH], 'badge': 'Recommended', 'recommended': True,
+        'description': "Labels every line on vector PDFs and DXF by looking at the whole sheet. GPS (Rampasek et al., 2022) combines local message passing, between lines that touch, cross or run parallel, with global attention across all lines. That suits linear runs (duct, pipe, conduit), where a line's identity can depend on a tag or a piece of equipment far along the run. Needs vector drawings, not scans. Memory grows with sheet size, so very dense sheets may need a GPU.",
+        'gpu_recommended': 'none (CPU ok)', 'cpu_trainable': True, 'inits': [SCRATCH], 'badge': 'Sees the whole sheet', 'recommended': True,
     },
     {
         'id': 'gnn-sage-node', 'task': 'node_classification', 'family': 'gnn', 'name': 'GraphSAGE node classifier',
         'architecture': 'torch_geometric.nn.SAGEConv x3 + MLP head', **PYG, 'version': 'torch_geometric 2.8',
-        'description': 'Classifies vector primitives (wall / door / window / room tag ...) from geometry + topology.',
-        'gpu_recommended': 'none (CPU ok)', 'cpu_trainable': True, 'inits': [SCRATCH],
+        'description': "Labels every line on vector PDFs and DXF, fast, even on very dense sheets. GraphSAGE (Hamilton et al., 2017) learns from each line's neighbourhood and generalises to drawings it has never seen, and it scales to large graphs. A good first line-by-line model and a fast fallback for huge sheets. Looks only at nearby lines, so it can miss context that comes from far along a run. Needs vector drawings.",
+        'gpu_recommended': 'none (CPU ok)', 'badge': 'Fast on big sheets', 'cpu_trainable': True, 'inits': [SCRATCH],
     },
     {
         'id': 'gnn-gat-node', 'task': 'node_classification', 'family': 'gnn', 'name': 'GATv2 node classifier (edge-aware)',
         'architecture': 'torch_geometric.nn.GATv2Conv(edge_dim) x3 + MLP head', **PYG, 'version': 'torch_geometric 2.8',
-        'description': 'Attention over neighbours using candidate-edge features (touch / cross / parallel / near).',
-        'gpu_recommended': 'none (CPU ok)', 'cpu_trainable': True, 'inits': [SCRATCH],
+        'description': 'Labels every line on vector PDFs and DXF, weighting which neighbours matter. GATv2 (Brody et al., 2022) uses attention to decide how much each connected line counts, and also reads how lines meet (touch, cross, parallel). Graph attention on CAD primitives is the approach of GAT-CADNet (CVPR 2022), which reported strong symbol spotting on CAD floor plans. Good for symbols and junctions. Needs vector drawings.',
+        'gpu_recommended': 'none (CPU ok)', 'badge': 'Proven on CAD symbols', 'cpu_trainable': True, 'inits': [SCRATCH],
     },
     {
         'id': 'gnn-gcn-node', 'task': 'node_classification', 'family': 'gnn', 'name': 'GCN node classifier',
         'architecture': 'torch_geometric.nn.GCNConv x3 + MLP head', **PYG, 'version': 'torch_geometric 2.8',
-        'description': 'Simple spectral baseline.', 'gpu_recommended': 'none (CPU ok)', 'cpu_trainable': True, 'inits': [SCRATCH],
+        'description': 'Simplest line-by-line model: a reference point to compare the others against. GCN (Kipf & Welling, 2017) averages each line with its neighbours equally, which can blur labels where different systems meet (a duct crossing a pipe). Use it to check that a harder model is really earning its keep. Needs vector drawings.', 'gpu_recommended': 'none (CPU ok)', 'cpu_trainable': True, 'inits': [SCRATCH],
     },
     {
         'id': 'gnn-sage-edge', 'task': 'edge_classification', 'family': 'gnn', 'name': 'GraphSAGE relation classifier',
         'architecture': 'SAGEConv encoder + MLP([h_u, h_v, |h_u-h_v|, edge_attr])', **PYG, 'version': 'torch_geometric 2.8',
-        'description': 'Classifies candidate edges into relations (same_object, connects_to, hosted_by ... / none).',
-        'gpu_recommended': 'none (CPU ok)', 'cpu_trainable': True, 'inits': [SCRATCH],
+        'description': "Connects lines into whole objects and runs. Instead of naming each line, it predicts how two lines relate: same object, connected to, hosted by (a door in a wall), bounded by. That is what turns separate segments into one continuous duct, pipe or conduit run, so you can total its length, and groups a symbol's lines into one counted item. Built on GraphSAGE (Hamilton et al., 2017). Needs vector drawings.",
+        'gpu_recommended': 'none (CPU ok)', 'badge': 'Joins runs & symbols', 'cpu_trainable': True, 'inits': [SCRATCH],
     },
 ]
 

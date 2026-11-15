@@ -55,3 +55,22 @@ RF-DETR sizes above base and DEIMv2's DINOv3 variants (DINOv3 license) are exclu
 SegFormer, Ultralytics YOLO, any model trained on FloorPlanCAD / ArchCAD-400K / CubiCasa5k (all CC BY-NC).
 No commercially usable floor-plan-pretrained checkpoint exists publicly: a Kentucky AI base model trained on
 permissive data (e.g. Modified Swiss Dwellings, CC BY 4.0) would fill that gap.
+
+## License check of pretrained weights (Nov 2026, primary sources)
+| Weights | License of the weights | Commercial use | Source |
+|---|---|---|---|
+| DINOv2 (`facebook/dinov2-with-registers-small`) | Apache-2.0 | yes | HF model card; facebookresearch/dinov2 LICENSE |
+| D-FINE-S (`ustc-community/dfine-small-coco`) | Apache-2.0 | yes | HF model card |
+| RT-DETRv2-R18 (`PekingU/rtdetr_v2_r18vd`) | Apache-2.0 | yes | HF model card |
+| RF-DETR-S (`Roboflow/rf-detr-small`) | Apache-2.0 (detection Nano/Small/Medium/Large; all Seg sizes) | yes | roboflow.com/model-licenses/rf-detr |
+| RF-DETR detection Atto/Femto/Pico/XL/2XL | Roboflow Platform Model License 1.0 | self-hosting needs an Enterprise add-on | same — **not offered** |
+| SegFormer / MiT (`nvidia/mit-b0`, all NVIDIA SegFormer weights) | NVIDIA Source Code License, §3.3 "may be used ... non-commercially" (research or evaluation only) | **no** | NVlabs/SegFormer LICENSE — **excluded**, architecture offered from zero |
+| torchvision LR-ASPP COCO-VOC, Mask R-CNN R50 v2 COCO | none stated; torchvision says weights "may have their own licenses or terms and conditions derived from the dataset used for training" and it is the user's responsibility | **unresolved** — stays "review required", not deployable | docs.pytorch.org/vision/stable/models.html |
+| PyG (all graph models, code) | MIT | yes | pyg-team/pytorch_geometric LICENSE |
+
+Descriptions in the catalog now say what each model suits according to its own paper (LR-ASPP: Howard et al. 2019;
+DINOv2: Oquab et al. 2023; SegFormer: Xie et al. 2021; D-FINE: Peng et al. 2024; RF-DETR: Roboflow 2025, RF100-VL;
+RT-DETRv2: Lv et al. 2024; Mask R-CNN: He et al. 2017; GPS: Rampasek et al. 2022; GraphSAGE: Hamilton et al. 2017;
+GATv2: Brody et al. 2022, applied to CAD by GAT-CADNet, CVPR 2022; GCN: Kipf & Welling 2017), mapped to the jobs
+customers train for: outline areas, item counts, linear runs (duct / pipe / conduit) and line-by-line labeling.
+Results from the small synthetic platform tests are kept in TEST_RESULTS.md as bug-hunting runs, not as model rankings.
