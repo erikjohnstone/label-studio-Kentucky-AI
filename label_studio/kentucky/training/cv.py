@@ -544,23 +544,81 @@ def _target(inst):
 
 
 @torch.no_grad()
-def predict_instances(model, gray, score_thr=0.5, classes=None):
+def _tiles(n, tile, overlap):
+    if n <= tile:
+        return [0]
+    step = max(1, int(tile * (1 - overlap)))
+    xs = list(range(0, n - tile, step)) + [n - tile]
+    return sorted(set(xs))
+
+
+@torch.no_grad()
+def predict_instances(model, gray, score_thr=0.5, classes=None, tile=None, overlap=0.25, with_masks=True):
+    """Items on a sheet. Sheets larger than ~1.25 tiles are cut into overlapping tiles (the size the model trained
+    on), detected tile by tile and merged (class-wise NMS, then partial boxes inside a stronger one are dropped), so
+    small symbols keep their resolution and the per-pass detection cap does not limit a busy sheet."""
     model.eval()
-    x = to_input(gray)
-    out = model([x])[0]
-    res = []
     H, W = gray.shape
-    for j, (b, lab, sc) in enumerate(zip(out['boxes'], out['labels'], out['scores'])):
-        if float(sc) < score_thr:
+    raw = []  # (box[4] in sheet px, label, score, (y0, x0, tile_mask) | None)
+    if not tile or (H <= tile * 1.25 and W <= tile * 1.25):
+        out = model([to_input(gray)])[0]
+        for j in range(len(out['boxes'])):
+            m = (0, 0, out['masks'][j][0].numpy() > 0.5) if 'masks' in out else None
+            raw.append((out['boxes'][j].tolist(), int(out['labels'][j]), float(out['scores'][j]), m))
+    else:
+        for y0 in _tiles(H, tile, overlap):
+            for x0 in _tiles(W, tile, overlap):
+                t = gray[y0:y0 + tile, x0:x0 + tile]
+                out = model([to_input(t)])[0]
+                for j in range(len(out['boxes'])):
+                    if float(out['scores'][j]) < min(score_thr, 0.05):
+                        continue
+                    bx = out['boxes'][j].tolist()
+                    m = (y0, x0, out['masks'][j][0].numpy() > 0.5) if 'masks' in out else None
+                    raw.append(([bx[0] + x0, bx[1] + y0, bx[2] + x0, bx[3] + y0], int(out['labels'][j]), float(out['scores'][j]), m))
+        if raw:
+            from torchvision.ops import batched_nms
+
+            boxes = torch.tensor([r[0] for r in raw], dtype=torch.float32)
+            scores = torch.tensor([r[2] for r in raw])
+            labels = torch.tensor([r[1] for r in raw])
+            keep = batched_nms(boxes, scores, labels, 0.5).tolist()  # sorted by score
+            kept = []
+            area = (boxes[:, 2] - boxes[:, 0]).clamp(min=0) * (boxes[:, 3] - boxes[:, 1]).clamp(min=0)
+            # a box cut by a tile edge sits inside the whole one from a neighbouring tile: largest first, drop what lies within
+            for i in sorted(keep, key=lambda i: -float(area[i])):
+                inside = False
+                for k in kept:
+                    if labels[k] != labels[i]:
+                        continue
+                    ix = float((torch.min(boxes[i, 2], boxes[k, 2]) - torch.max(boxes[i, 0], boxes[k, 0])).clamp(min=0))
+                    iy = float((torch.min(boxes[i, 3], boxes[k, 3]) - torch.max(boxes[i, 1], boxes[k, 1])).clamp(min=0))
+                    # only a plausible whole of this fragment counts (not a stray oversized, weaker box)
+                    if ix * iy > 0.8 * float(area[i]) and float(area[k]) <= 16 * float(area[i]) and float(scores[k]) >= 0.5 * float(scores[i]):
+                        inside = True
+                        break
+                if not inside:
+                    kept.append(i)
+            kept.sort(key=lambda i: -float(scores[i]))
+            raw = [raw[i] for i in kept]
+    res = []
+    for bx, lab, sc, m in raw:
+        if sc < score_thr:
             continue
-        if 'masks' in out:
-            mask = out['masks'][j][0].numpy() > 0.5
-        else:  # box detectors (RT-DETR): the item's outline is its box
+        r = {'label': classes[lab - 1] if classes else lab, 'score': sc, 'box': [float(v) for v in bx]}
+        x0, y0, x1, y1 = [int(round(v)) for v in bx]
+        if m is None:  # box detectors (DETR family): the item's outline is its box
+            r['polygon'] = [[bx[0], bx[1]], [bx[2], bx[1]], [bx[2], bx[3]], [bx[0], bx[3]]]
+        if with_masks:
             mask = np.zeros((H, W), bool)
-            x0, y0, x1, y1 = [int(round(float(v))) for v in b]
-            mask[max(y0, 0):max(y1, y0 + 1), max(x0, 0):max(x1, x0 + 1)] = True
-        res.append({'label': classes[int(lab) - 1] if classes else int(lab), 'score': float(sc),
-                    'box': [float(v) for v in b], 'mask': mask})
+            if m is None:
+                mask[max(y0, 0):max(y1, y0 + 1), max(x0, 0):max(x1, x0 + 1)] = True
+            else:
+                ty, tx, tm = m
+                hh, ww = min(tm.shape[0], H - ty), min(tm.shape[1], W - tx)
+                mask[ty:ty + hh, tx:tx + ww] = tm[:hh, :ww]
+            r['mask'] = mask
+        res.append(r)
     return res
 
 
@@ -586,7 +644,7 @@ def train_instance(spec, reporter, deadline):
     step = 0
     best, best_epoch, bad = -1.0, -1, 0
     if spec.get('base_checkpoint'):  # continuing: the result can never be worse than where it started
-        rep = evaluate_instance(model, val, classes, cfg.get('score_threshold', 0.5))
+        rep = evaluate_instance(model, val, classes, cfg.get('score_threshold', 0.5), tile=cfg['crop_size'])
         best, best_epoch = rep['mAP@50'] or 0.0, 0
         save_checkpoint(out / 'best.pt', model, spec, classes, 0, rep)
         reporter.log(f'Starting model scores {best:.3f} mAP50 on the check sheets; kept unless training beats it')
@@ -630,7 +688,7 @@ def train_instance(spec, reporter, deadline):
         rec = {'epoch': epoch + 1, 'train_loss': float(np.mean(losses)) if losses else None, 'lr': opt.param_groups[0]['lr'],
                'epoch_s': round(time.time() - t0, 2)}
         if (epoch + 1) % cfg['val_every'] == 0 or epoch + 1 == cfg['epochs']:
-            rep = evaluate_instance(model, val, classes, cfg.get('score_threshold', 0.5))
+            rep = evaluate_instance(model, val, classes, cfg.get('score_threshold', 0.5), tile=cfg['crop_size'])
             rec['val_mask_map50'] = rep['mAP@50']
             score = rep['mAP@50'] or 0.0
             if score > best:
@@ -654,18 +712,18 @@ def train_instance(spec, reporter, deadline):
     ck = torch.load(out / 'best.pt', map_location='cpu', weights_only=False)
     model.load_state_dict(ck['state_dict'])
     final = {'best_epoch': best_epoch, 'kept_starting_model': best_epoch == 0, 'task': 'instance_segmentation', 'classes': classes}
-    final['val'] = evaluate_instance(model, val, classes, cfg.get('score_threshold', 0.5))
+    final['val'] = evaluate_instance(model, val, classes, cfg.get('score_threshold', 0.5), tile=cfg['crop_size'])
     if test:
-        final['test'] = evaluate_instance(model, test, classes, cfg.get('score_threshold', 0.5))
+        final['test'] = evaluate_instance(model, test, classes, cfg.get('score_threshold', 0.5), tile=cfg['crop_size'])
     final['headline'] = {'mask_map50': (final.get('test') or final['val'])['mAP@50'], 'split': 'test' if test else 'val'}
     return final, out / 'best.pt'
 
 
-def evaluate_instance(model, items, classes, thr):
+def evaluate_instance(model, items, classes, thr, tile=None):
     preds, gts = [], []
     count = {}
     for _, gray, inst in items:
-        p = predict_instances(model, gray, score_thr=0.05, classes=classes)
+        p = predict_instances(model, gray, score_thr=0.05, classes=classes, tile=tile)
         preds.append(p)
         gts.append(inst)
         for c in classes:

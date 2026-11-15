@@ -27,6 +27,12 @@ class InferenceError(ValueError):
     pass
 
 
+def _box_model(ck) -> bool:
+    from ..training.rtdetr import SPECS
+
+    return ck.get('catalog_id') in SPECS
+
+
 def load_checkpoint(mv):
     import torch
 
@@ -155,11 +161,14 @@ def predict(mv, payload: dict, org_id: int) -> dict:
             from ..training.cv import predict_instances
 
             thr = float(payload.get('score_threshold', ck['config'].get('score_threshold', 0.5)))
-            for r in predict_instances(model, g, thr, classes):
-                polys = _polys_from_mask(r['mask'])
-                if not polys:
-                    continue
-                poly = max(polys, key=lambda p: len(p))
+            for r in predict_instances(model, g, thr, classes, tile=ck['config'].get('crop_size'), with_masks=False if _box_model(ck) else True):
+                if r.get('polygon'):
+                    poly = np.asarray(r['polygon'], dtype=float)
+                else:
+                    polys = _polys_from_mask(r['mask'])
+                    if not polys:
+                        continue
+                    poly = max(polys, key=lambda p: len(p))
                 preds.append({'label': r['label'], 'confidence': round(r['score'], 4), **_with_coords(poly, s, sheet, page)})
         return {'task': task, 'model_version': mv.id, 'image_size': [gray.shape[1], gray.shape[0]],
                 'sheet_id': sheet.id if sheet else None, 'predictions': preds}
