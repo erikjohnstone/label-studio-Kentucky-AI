@@ -34,6 +34,7 @@ class Prim:
     obj: str  # ground-truth object id
     text: str = ''
     width: float = 0.7
+    dash: tuple = ()  # PDF dash array in points, () = solid
 
 
 @dataclass
@@ -41,8 +42,9 @@ class Plan:
     width: float  # points
     height: float
     prims: list = field(default_factory=list)
-    objects: dict = field(default_factory=dict)  # obj id -> {label, polygon(list of pts)}
+    objects: dict = field(default_factory=dict)  # obj id -> {label, polygon(list of pts)[, length_pt, system]}
     seed: int = 0
+    grid: tuple = ()  # (xs, ys) room grid lines
 
 
 def _rect(x0, y0, x1, y1):
@@ -146,6 +148,7 @@ def generate_plan(seed: int = 0, width: float = 792.0, height: float = 612.0) ->
             tw = len(name) * 4.4
             plan.objects[oid] = {'label': TEXT, 'polygon': _rect(cx - tw / 2, cy - 4, cx + tw / 2, cy + 4)}
             plan.prims.append(Prim('text', [[cx - tw / 2, cy + 3]], TEXT, oid, text=name))
+    plan.grid = (xs, ys)
     return plan
 
 
