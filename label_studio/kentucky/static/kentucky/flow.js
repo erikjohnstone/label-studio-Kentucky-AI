@@ -253,11 +253,11 @@
             inits.map((i) => opt(init === i.id, () => { init = i.id; base = null; draw(); }, i.id === 'scratch' ? 'Start from zero' : i.label, i.note || i.checkpoint_license,
               [lic(i.commercially_deployable === true ? 'OK to deploy commercially' : 'Legal review pending — can’t deploy', i.commercially_deployable === true ? true : false)])),
             mine.map((v) => opt(init === 'checkpoint' && base === v.id, () => { init = 'checkpoint'; base = v.id; draw(); }, `Your model v${v.version} · ${v.dataset_name || 'plan set'}`, `${v.report ? Math.round(v.report.score * 100) + '% on its test · ' : ''}trained ${fmt.date(v.created_at)}`, [lic('Yours to deploy', true)])))),
-          cfg ? step(4, 'Settings', h('p.muted.small', { style: { margin: '-4px 0 10px' } }, 'Pre-filled with what we recommend for this model. Every value is checked before training starts.'),
-            h('div.advfields', {}, fields.map((k) => h('label.field', {}, h('span', {}, k.replace(/_/g, ' ')),
+          cfg ? step(4, 'Settings', h('p.muted.small', { style: { margin: '-4px 0 10px' } }, 'Pre-filled with what we recommend for this model. Every value is checked before training starts.' + (init === 'checkpoint' ? ' Continuing from your model uses 0.3× this learning rate unless you change it, and keeps your model if training does not beat it.' : '')),
+            h('div.advfields', {}, fields.map((k) => h('label.field', {}, h('span', {}, (FIELD_LABEL[k] || k.replace(/_/g, ' '))),
               h('input', { type: 'number', value: cfg[k], step: schema[k].type === 'float' ? 'any' : '1', min: schema[k].min, max: schema[k].max, oninput: (e) => { cfg[k] = schema[k].type === 'int' ? parseInt(e.target.value, 10) : parseFloat(e.target.value); } }),
               defaults[k] !== cfg[k] ? h('small.cy', {}, `recommended ${defaults[k]}`) : null)),
-            Object.keys(enums).map((k) => h('label.field', {}, h('span', {}, k.replace(/_/g, ' ')), h('select', { onchange: (e) => { cfg[k] = e.target.value; } }, enums[k].map((o) => h('option', { value: o, selected: cfg[k] === o }, o))))))) : null,
+            Object.keys(enums).map((k) => h('label.field', {}, h('span', {}, FIELD_LABEL[k] || k.replace(/_/g, ' ')), h('select', { onchange: (e) => { cfg[k] = e.target.value; } }, enums[k].map((o) => h('option', { value: o, selected: cfg[k] === o }, o))))))) : null,
           h('div.row', { style: { justifyContent: 'flex-end', gap: '10px', marginTop: '6px' } },
             h('button.btn', { onclick: () => { adv = null; close(); refresh(); } }, 'Use recommended'),
             h('button.btn.primary', { onclick: apply }, 'Use these settings')));
@@ -295,6 +295,9 @@
       h('div.step', {}, h('div.stepl', {}, h('span.n', {}, '3'), h('b', {}, "How it's improving"), lbl('Share of items found on its test sheet')), hist)), panel));
   };
 
+  const FIELD_LABEL = { lr: 'Learning rate', batch_size: 'Batch size', weight_decay: 'Weight decay', crop_size: 'Crop size (px)', crops_per_sheet: 'Crops per sheet',
+    training_scale: 'Image scale', hidden: 'Hidden size', layers: 'Layers', heads: 'Attention heads', early_stopping_patience: 'Stop after rounds without progress',
+    max_runtime_s: 'Time limit (seconds)', optimizer: 'Optimizer', scheduler: 'Learning-rate schedule' };
   // ================================================================== Training run: live → results
   const STEP = [['PREPARING', 'Got your checked sheets ready'], ['TRAINING', 'Learning to find each item'], ['EVALUATING', "Testing on a sheet it hasn't seen"], ['SAVING', 'Saving the model']];
   const ORDER = ['CREATED', 'VALIDATING', 'QUEUED', 'PROVISIONING', 'PREPARING', 'TRAINING', 'EVALUATING', 'SAVING', 'COMPLETED'];

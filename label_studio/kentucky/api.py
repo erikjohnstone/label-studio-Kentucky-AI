@@ -1004,5 +1004,6 @@ def training_defaults(request):
         cfg = recommended(cid, {'train_items': n})
     except ConfigError as e:
         raise ValidationError({'catalog_id': str(e)})
+    cfg['max_runtime_s'] = pricing.runtime_cap(cid, cfg, n, request.GET.get('gpu_type') or 'cpu-local')  # what the job gets
     return Response({'config': cfg, 'schema': {k: {'type': t.__name__, 'min': lo, 'max': hi} for k, (t, lo, hi) in SCHEMA.items() if k in cfg},
                      'enums': {k: sorted(v) for k, v in ENUMS.items() if k in cfg}})
