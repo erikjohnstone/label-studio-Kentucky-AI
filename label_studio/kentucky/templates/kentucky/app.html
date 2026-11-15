@@ -22,6 +22,7 @@
     <nav>
       <a class="nav" data-nav="home" href="/ka/"><svg viewBox="0 0 24 24"><path d="M4 5h16v14H4z"/><path d="M4 10h16M9 10v9"/></svg><span>Plan sets</span><span class="c" id="nc-home"></span></a>
       <a class="nav" data-nav="models" href="/ka/models/"><svg viewBox="0 0 24 24"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/></svg><span>Models</span><span class="c" id="nc-models"></span></a>
+      <a class="nav" data-nav="experiments" href="/ka/experiments/"><svg viewBox="0 0 24 24"><path d="M9 3h6M10 3v6l-5 9a2 2 0 0 0 1.7 3h10.6a2 2 0 0 0 1.7-3l-5-9V3"/><path d="M7.5 14h9"/></svg><span>Experiments</span></a>
       <a class="nav" data-nav="deployments" href="/ka/deployments/"><svg viewBox="0 0 24 24"><path d="M4 12h12M12 6l6 6-6 6M20 4v16"/></svg><span>Deployments</span><span class="c" id="nc-deployments"></span></a>
     </nav>
     <div class="nav-label">Developers</div>
@@ -50,6 +51,7 @@
 <div class="toasts" id="ka-toasts" role="status" aria-live="polite"></div>
 <script src="{% static 'kentucky/ka.js' %}"></script>
 <script src="{% static 'kentucky/flow.js' %}"></script>
+<script src="{% static 'kentucky/studio.js' %}"></script>
 {% if page == 'graph' %}<script src="{% static 'kentucky/graph_studio.js' %}"></script>{% endif %}
 {% if page == 'markup' %}{% if editor %}<script src="{% static 'kentucky/markup.js' %}"></script>{% else %}<script src="{% static 'kentucky/review.js' %}"></script>{% endif %}{% endif %}
 </body>

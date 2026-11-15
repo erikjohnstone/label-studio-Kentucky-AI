@@ -106,7 +106,7 @@
   Object.assign(KA, { api, h, svgEl, toast, dialog, guard, fmt, chip, empty, mount, icon, setTop, sheetFrame, jobChip, LABEL, nice, cap });
 
   // nav + theme
-  const NAV = { markup: 'home', home: 'home', project: 'home', train: 'home', run: 'models', models: 'models', deployments: 'deployments', apikeys: 'apikeys', api: 'api', billing: 'billing', team: 'team' };
+  const NAV = { experiments: 'experiments', markup: 'home', home: 'home', project: 'home', train: 'home', run: 'models', models: 'models', deployments: 'deployments', apikeys: 'apikeys', api: 'api', billing: 'billing', team: 'team' };
   document.querySelectorAll('[data-nav]').forEach((a) => a.classList.toggle('on', a.dataset.nav === NAV[page]));
   // theme: Light / Dark (remembered per browser); the review canvas follows it too
   KA.setTheme = (t) => {

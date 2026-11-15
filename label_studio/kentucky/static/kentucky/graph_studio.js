@@ -53,7 +53,7 @@
     const toolbar = h('div.toolbar', {},
       h('button.ot-btn.sm', { onclick: () => { vb = { x: 0, y: 0, w: S.sheet.width, h: S.sheet.height }; applyVB(); } }, 'Fit'),
       h('select', { onchange: (e) => { S.showEdges = e.target.value; drawEdges(); } }, [['selection', 'Edges: selection'], ['labeled', 'Edges: labeled'], ['all', 'Edges: all candidates'], ['none', 'Edges: hidden']].map(([v, t]) => h('option', { value: v }, t))),
-      h('a.ot-btn.sm', { href: `/ka/datasets/${S.sheet.dataset_id}/` }, 'Dataset'));
+      h('a.ot-btn.sm', { href: `/ka/projects/${S.sheet.dataset_id}/` }, '← Plan set'));
     const legend = h('div.legend', {});
     mini = h('canvas.minigraph', { width: 600, height: 420, title: 'Object graph (click a node to select its primitives)' });
     mini.addEventListener('click', onMiniClick);
@@ -61,7 +61,7 @@
     const wrap = h('div.canvas-wrap', {}, svg, toolbar, legend, mini);
     const root = document.getElementById('ka-root');
     root.style.maxWidth = 'none';
-    document.getElementById('ka-body').style.padding = '0';
+    const body = document.getElementById('ka-body'); if (body) body.style.padding = '0';
     mount(h('div.studio', {}, wrap, panel));
     S.legend = legend;
     paint();

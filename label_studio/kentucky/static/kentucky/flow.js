@@ -7,6 +7,8 @@
   const plural = (n, w) => `${fmt.n(n)} ${w}${n === 1 ? '' : 's'}`;
   const NAME = { wall: 'Walls', door: 'Doors', window: 'Windows', room: 'Rooms', room_tag: 'Room names' };
   const nm = (k) => NAME[k] || cap(KA.niceItem(k)) + 's';
+  const TASKS = { semantic_segmentation: 'Outline areas', instance_segmentation: 'Item by item', node_classification: 'Name every line', edge_classification: 'Connections between lines' };
+  const TASKDESC = { semantic_segmentation: 'Paints every wall, door and window pixel. Fast; works on scans.', instance_segmentation: 'One shape per item — best for counts and review.', node_classification: 'Labels each vector line (graph network). Vector PDFs and CAD.', edge_classification: 'Learns which lines belong together.' };
   const SW = { wall: '#62d4dc', door: '#f0b24a', window: '#9db1ff', room: '#7fcf9c', room_tag: '#7fcf9c' };
   const sw = (k) => SW[k] || '#848e8b';
   const mark = '<svg viewBox="0 0 24 24"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/></svg>';
@@ -154,14 +156,15 @@
     if (!ds.length) return mount(KA.empty('No plan sets yet', 'Add and check some plans first.', h('a.btn.primary', { href: '/ka/' }, 'Add plans')));
     const id = Number(qs.get('dataset') || ds[0].id);
     const d = ds.find((x) => x.id === id) || ds[0];
-    const [{ plan_sets: ps }, rd, est, ms] = await Promise.all([api('home/'), api(`datasets/${d.id}/readiness/`), api(`datasets/${d.id}/estimate/?goal=outlines`), api('models/')]);
+    let [{ plan_sets: ps }, rd, est, ms, cat] = await Promise.all([api('home/'), api(`datasets/${d.id}/readiness/`), api(`datasets/${d.id}/estimate/?goal=outlines`), api('models/'), api('catalog/')]);
+    let adv = null; // advanced choice: { task, catalog_id, init, base_model_version_id, config, label }
     const hp = ps.find((x) => x.id === d.id);
     setTop([['Plan sets', '/ka/'], [d.name, `/ka/projects/${d.id}/`], 'Train']);
     const counts = (rd.stats && rd.stats.class_counts) || hp.counts;
     const versions = ms.flatMap((m) => m.versions.map((v) => ({ ...v, m }))).filter((v) => v.dataset_id === d.id && v.task === 'semantic_segmentation' && v.report).sort((a, b) => a.version - b.version);
     const prev = versions[versions.length - 1];
     let speed = 'cpu-local';
-    const ready = !!rd.ready_for?.semantic_segmentation;
+    const isReady = () => !!rd.ready_for?.[adv ? adv.task : 'semantic_segmentation'];
     const cover = hp.cover;
     const classes = [...new Set(['wall', 'door', 'window', ...Object.keys(counts)])].filter((k) => k !== 'unknown').slice(0, 4);
     if (classes.length < 4) classes.push('room');
@@ -184,8 +187,8 @@
       const blockers = rd.blockers || [];
       const items = [
         [hp.done >= 2 ? 'ok' : 'no', `${hp.done} sheet${hp.done === 1 ? '' : 's'} checked`, hp.done >= 2 ? 'Every label on them confirmed' : 'Check at least 2 sheets'],
-        [ready ? 'ok' : 'no', `${fmt.n(Object.values(counts).reduce((a, b) => a + b, 0))} examples`, ready ? 'Enough of each item to learn from' : (blockers[0]?.message || blockers[0] || 'Not enough examples yet')],
-        prev ? ['ok', `Builds on Model v${prev.version}`, 'Starts from what it already knows'] : ['ok', 'First model for this plan set', 'Starts fresh'],
+        [isReady() ? 'ok' : 'no', `${fmt.n(Object.values(counts).reduce((a, b) => a + b, 0))} examples`, isReady() ? 'Enough of each item to learn from' : (blockers[0]?.message || (adv && !rd.ready_for?.[adv.task] ? `Not enough labels yet for ${TASKS[adv.task]}` : 'Not enough examples yet'))],
+        adv ? ['ok', adv.label, adv.detail] : prev ? ['ok', `Builds on Model v${prev.version}`, 'Starts from what it already knows'] : ['ok', 'First model for this plan set', 'Starts fresh'],
       ];
       const open = hp.sheets.length - hp.done;
       if (open) items.push(['w', `${plural(open, 'sheet')} not checked yet`, "They'll be skipped — check them for a better model"]);
@@ -198,19 +201,83 @@
           h('div.nums', {}, h('div', {}, h('b', {}, e ? '~' + fmt.dur(mid(e)) : '—'), lbl('Time')), h('div', {}, h('b', {}, e ? cost(e) : '—'), lbl('Cost'))));
       }));
       const e = est[speed];
-      panel.replaceChildren(lbl(ready ? '● Ready to train' : '● Not ready yet', ready), h('div.t', {}, `Model v${prev ? prev.version + 1 : 1} for`, h('br'), h('span.dim', {}, d.name)),
+      const ready = isReady();
+      panel.replaceChildren(lbl(ready ? '● Ready to train' : '● Not ready yet', ready), h('div.t', {}, `Model v${(() => { if (!adv) return prev ? prev.version + 1 : 1; const vs = ms.flatMap((m) => m.versions).filter((v) => v.catalog_id === adv.catalog_id && v.dataset_id === d.id); return vs.length ? Math.max(...vs.map((v) => v.version)) + 1 : 1; })()} for`, h('br'), h('span.dim', {}, d.name)),
         h('div', { style: { marginTop: '18px' } }, checklist()),
         h('div.est3', {}, h('div', {}, h('b', {}, e ? '~' + fmt.dur(mid(e)) : '—'), lbl('Time')), h('div', {}, h('b', {}, e ? cost(e) : '—'), lbl('Cost')), h('div', {}, h('b', {}, '1+'), lbl('Test sheet'))),
         h('button.btn.primary.lg.go', { disabled: !ready || !e, onclick: () => start(e) }, 'Start training →'),
+        h('button.btn.lg.go.ghostd', { onclick: customize }, adv ? 'Change model & settings' : 'Customize model & settings'),
         h('div.fine', {}, 'We test it on a sheet it never saw and tell you how it did.'));
     };
     async function start(e) {
       if (Number(e.customer_cost_high) > 0 && !(await dialog('Approve the cost', h('p.muted', {}, `This uses a cloud GPU. You pay for the minutes used — never more than ${fmt.usd(e.max_charge_at_runtime_limit)}.`), [{ label: `Approve up to ${fmt.usd(e.max_charge_at_runtime_limit)}`, primary: true }]))) return;
-      const r = await guard(() => api(`datasets/${d.id}/train/`, { method: 'POST', body: { goal: 'outlines', gpu_type: speed } }));
+      const body = { goal: 'outlines', gpu_type: speed };
+      if (adv) Object.assign(body, { catalog_id: adv.catalog_id, init: adv.init, base_model_version_id: adv.base_model_version_id, config: adv.config });
+      const r = await guard(() => api(`datasets/${d.id}/train/`, { method: 'POST', body }));
       if (!r.ready) return toast('Not ready yet — check at least 2 sheets with 3 examples of each item.', 'danger');
       if (r.job.status === 'FAILED') return toast(r.job.error, 'danger');
       await guard(() => api(`jobs/${r.job.id}/authorize/`, { method: 'POST', body: { confirm: true } }));
       location.href = `/ka/runs/${r.job.id}/`;
+    }
+    // ---------------- advanced: task → architecture → starting point → settings (validated server-side)
+    async function customize() {
+      const TASKLIST = Object.keys(TASKS);
+      let task = adv ? adv.task : 'semantic_segmentation';
+      let cid = adv ? adv.catalog_id : null, init = adv ? adv.init : null, base = adv ? adv.base_model_version_id : null, cfg = adv ? { ...adv.fullConfig } : null, defaults = null, schema = {}, enums = {};
+      const own = ms.flatMap((m) => m.versions.map((v) => ({ ...v, m }))).filter((v) => v.status === 'ready');
+      const body = h('div.adv-body');
+      const close = () => scrim.remove();
+      const scrim = h('div.scrim', { onclick: (e) => { if (e.target === scrim) close(); } }, h('div.dialog.advdlg', { role: 'dialog', 'aria-modal': 'true' },
+        h('div.row', { style: { justifyContent: 'space-between' } }, h('div', {}, lbl('Training center · advanced'), h('div.h2', { style: { marginTop: '6px' } }, 'Choose the model and how it learns')), h('button.btn.sm.ghost', { onclick: close }, 'Close')), body));
+      document.body.appendChild(scrim);
+      const loadDefaults = async () => { const r = await api(`training/defaults/?catalog_id=${cid}&train_items=${Math.max(1, hp.done)}`); defaults = r.config; schema = r.schema; enums = r.enums; if (!cfg || cfg._cid !== cid) cfg = { ...r.config, _cid: cid }; };
+      const arches = () => cat.open_models.filter((m) => m.task === task);
+      const draw = async () => {
+        if (!cid || !arches().some((a) => a.id === cid)) { cid = (arches().find((a) => a.cpu_trainable) || arches()[0])?.id; init = null; cfg = null; }
+        if (cid && (!cfg || cfg._cid !== cid)) await loadDefaults();
+        const arch = arches().find((a) => a.id === cid);
+        const inits = arch ? arch.inits.filter((i) => i.id !== 'checkpoint') : [];
+        const mine = own.filter((v) => v.catalog_id === cid);
+        if (!init) init = mine.length ? 'checkpoint' : 'scratch';
+        if (init === 'checkpoint' && !base && mine[0]) base = mine[0].id;
+        const step = (n, t, ...kids) => h('section.advstep', {}, h('div.stepl', {}, h('span.n', {}, String(n)), h('b', {}, t)), ...kids);
+        const opt = (on, onclick, title, sub, chips, disabled) => h('button.advopt' + (on ? '.on' : '') + (disabled ? '.off' : ''), { onclick: disabled ? null : onclick, disabled: !!disabled }, h('div', {}, h('b', {}, title), sub ? h('small', {}, sub) : null), chips ? h('div.chips2', {}, chips) : null);
+        const lic = (txt, ok) => h('span.pill.' + (ok ? 'ok' : ok === false ? 'warn' : 'mute'), {}, txt);
+        const fields = cfg ? Object.keys(schema).filter((k) => ['epochs', 'batch_size', 'lr', 'weight_decay', 'crop_size', 'crops_per_sheet', 'training_scale', 'hidden', 'layers', 'heads', 'dropout', 'early_stopping_patience', 'seed', 'max_runtime_s'].includes(k)) : [];
+        body.replaceChildren(
+          step(1, 'What should it learn?', h('div.advgrid', {}, TASKLIST.map((t) => opt(task === t, () => { task = t; cid = null; draw(); }, TASKS[t], TASKDESC[t], [rd.ready_for?.[t] ? lic('Your labels are ready', true) : lic('Needs more labels')])))),
+          step(2, 'Model architecture', h('div.advgrid', {}, arches().map((a) => opt(cid === a.id, () => { cid = a.id; init = null; base = null; cfg = null; draw(); }, a.name, a.description,
+            [lic(`Code: ${a.implementation_license}`, true), lic(a.cpu_trainable ? 'Trains on our servers' : `Needs GPU (${a.gpu_recommended})`, a.cpu_trainable ? true : null)])))),
+          step(3, 'Starting point', h('div.advgrid', {},
+            opt(false, null, 'Kentucky AI model', cat.kentucky_models_note || 'Coming soon', [lic('Not available yet')], true),
+            inits.map((i) => opt(init === i.id, () => { init = i.id; base = null; draw(); }, i.id === 'scratch' ? 'Start from zero' : i.label, i.note || i.checkpoint_license,
+              [lic(i.commercially_deployable === true ? 'OK to deploy commercially' : 'Legal review pending — can’t deploy', i.commercially_deployable === true ? true : false)])),
+            mine.map((v) => opt(init === 'checkpoint' && base === v.id, () => { init = 'checkpoint'; base = v.id; draw(); }, `Your model v${v.version}`, `${v.report ? Math.round(v.report.score * 100) + '% on its test · ' : ''}trained ${fmt.date(v.created_at)}`, [lic('Yours to deploy', true)])))),
+          cfg ? step(4, 'Settings', h('p.muted.small', { style: { margin: '-4px 0 10px' } }, 'Pre-filled with what we recommend for this model. Every value is checked before training starts.'),
+            h('div.advfields', {}, fields.map((k) => h('label.field', {}, h('span', {}, k.replace(/_/g, ' ')),
+              h('input', { type: 'number', value: cfg[k], step: schema[k].type === 'float' ? 'any' : '1', min: schema[k].min, max: schema[k].max, oninput: (e) => { cfg[k] = schema[k].type === 'int' ? parseInt(e.target.value, 10) : parseFloat(e.target.value); } }),
+              defaults[k] !== cfg[k] ? h('small.cy', {}, `recommended ${defaults[k]}`) : null)),
+            Object.keys(enums).map((k) => h('label.field', {}, h('span', {}, k.replace(/_/g, ' ')), h('select', { onchange: (e) => { cfg[k] = e.target.value; } }, enums[k].map((o) => h('option', { value: o, selected: cfg[k] === o }, o))))))) : null,
+          h('div.row', { style: { justifyContent: 'flex-end', gap: '10px', marginTop: '6px' } },
+            h('button.btn', { onclick: () => { adv = null; close(); refresh(); } }, 'Use recommended'),
+            h('button.btn.primary', { onclick: apply }, 'Use these settings')));
+      };
+      async function apply() {
+        const arch = arches().find((a) => a.id === cid);
+        const over = {}; Object.keys(defaults).forEach((k) => { if (JSON.stringify(defaults[k]) !== JSON.stringify(cfg[k])) over[k] = cfg[k]; });
+        try { await api(`datasets/${d.id}/estimate/?catalog_id=${cid}` + (over.epochs ? `&epochs=${over.epochs}` : '') + (over.batch_size ? `&batch_size=${over.batch_size}` : '')); } catch (e) { return toast(e.message, 'danger'); }
+        const i = arch.inits.find((x) => x.id === init);
+        const bv = own.find((v) => v.id === base);
+        adv = { task, catalog_id: cid, init, base_model_version_id: init === 'checkpoint' ? base : null, config: over, fullConfig: { ...cfg },
+          label: arch.name, detail: init === 'checkpoint' ? `Fine-tunes your model v${bv?.version}` : init === 'scratch' ? 'Starts from zero' : `Starts from ${i?.label}` + (Object.keys(over).length ? ` · ${Object.keys(over).length} custom setting${Object.keys(over).length > 1 ? 's' : ''}` : '') };
+        close(); refresh();
+      }
+      draw();
+    }
+    async function refresh() {
+      const q = adv ? `catalog_id=${adv.catalog_id}` + (adv.config.epochs ? `&epochs=${adv.config.epochs}` : '') + (adv.config.batch_size ? `&batch_size=${adv.config.batch_size}` : '') : 'goal=outlines';
+      try { est = await api(`datasets/${d.id}/estimate/?${q}`); } catch (e) { toast(e.message, 'danger'); }
+      render();
     }
     // history (measured scores only)
     const hist = h('div.hist', {}, versions.slice(-2).flatMap((v, i) => [i ? h('span.harrow') : null,

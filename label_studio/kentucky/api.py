@@ -87,7 +87,10 @@ def _ser_job(j: TrainingJob, full=False):
          'authorized_at': j.authorized_at, 'heartbeat_at': j.heartbeat_at, 'runtime_s': (j.resource_usage or {}).get('runtime_s'),
          'base_model_version': j.base_model_version_id,
          'model_version': j.model_versions.values_list('id', flat=True).first(),
-         'report': TA.report_card(j.final_metrics, j.task) if j.status == 'COMPLETED' else None}
+         'report': TA.report_card(j.final_metrics, j.task) if j.status == 'COMPLETED' else None,
+         'architecture': (catalog.get(j.catalog_id) or {}).get('name', j.catalog_id), 'dataset_name': j.dataset_version.dataset.name,
+         'base_version': j.base_model_version.version if j.base_model_version_id else None,
+         'deployed': Deployment.objects.filter(active_version__training_job=j, status='active').exists()}
     if full:
         sp = j.dataset_version.splits
         d.update({'eval_sheets': (sp.get('test') or []) + (sp.get('val') or []), 'config': j.config, 'seed': j.seed, 'code_version': j.code_version, 'status_history': j.status_history,
@@ -103,7 +106,12 @@ def _ser_mv(mv: ModelVersion, full=False):
          'dataset_id': mv.dataset_version.dataset_id if mv.dataset_version_id else None,
          'headline': (mv.metrics or {}).get('headline'), 'license': mv.license, 'sha256': mv.artifact_sha256,
          'downloadable': mv.downloadable, 'classes': list(mv.label_map.values()),
-         'report': TA.report_card(mv.metrics, mv.model.task)}
+         'report': TA.report_card(mv.metrics, mv.model.task),
+         'architecture': (catalog.get(mv.model.catalog_id) or {}).get('name', mv.model.catalog_id),
+         'init': mv.training_job.init if mv.training_job_id else None,
+         'base_version': (mv.training_job.base_model_version.version if mv.training_job_id and mv.training_job.base_model_version_id else None),
+         'dataset_name': mv.dataset_version.dataset.name if mv.dataset_version_id else None,
+         'runtime_s': (mv.training_job.resource_usage or {}).get('runtime_s') if mv.training_job_id else None}
     if full:
         d.update({'metrics': mv.metrics, 'input_schema': mv.input_schema, 'output_schema': mv.output_schema})
     return d
@@ -891,14 +899,24 @@ def dataset_train(request, pk):
     goal = GOALS.get(request.data.get('goal', 'outlines'))
     if goal is None:
         raise ValidationError({'goal': 'outlines | structure | relations'})
+    if request.data.get('catalog_id'):  # advanced mode: explicit architecture / starting point / settings
+        item = catalog.get(request.data['catalog_id'])
+        if item is None:
+            raise ValidationError({'catalog_id': 'unknown architecture'})
+        goal = {'task': item['task'], 'catalog_id': item['id']}
     v = create_version(d, request.user, notes='created by Train model')
     if not v.readiness['ready_for'].get(goal['task']):
         return Response({'ready': False, 'readiness': v.readiness, 'version_id': v.id}, status=200)
-    base = None
-    if not request.data.get('fresh'):
-        base = (ModelVersion.objects.filter(organization=d.organization, model__catalog_id=goal['catalog_id'], status='ready')
-                .order_by('-created_at').first())
-    j = orch.create_job(d.organization, request.user, v, goal['catalog_id'], 'checkpoint' if base else 'scratch',
+    base, init = None, request.data.get('init')
+    if init == 'checkpoint' or (init is None and not request.data.get('fresh')):
+        if request.data.get('base_model_version_id'):
+            base = _get(ModelVersion, request, pk=request.data['base_model_version_id'])
+        else:
+            base = (ModelVersion.objects.filter(organization=d.organization, model__catalog_id=goal['catalog_id'], status='ready')
+                    .order_by('-created_at').first())
+    if init is None:
+        init = 'checkpoint' if base else 'scratch'
+    j = orch.create_job(d.organization, request.user, v, goal['catalog_id'], init,
                         request.data.get('config') or {}, base, request.data.get('gpu_type', 'cpu-local'),
                         request.data.get('name') or f'{d.name} — {"plan outlines" if goal["task"] == "semantic_segmentation" else "plan structure"}')
     audit(request, 'training.create', j, status=j.status, goal=request.data.get('goal'))
@@ -910,8 +928,32 @@ def dataset_estimate(request, pk):
     """Up-front time/cost for the Train screen (before any job exists)."""
     from .training.config import recommended
 
+    from .training.config import ConfigError, validate
+
     d = _get(Dataset, request, pk=pk)
     goal = GOALS.get(request.GET.get('goal', 'outlines'), GOALS['outlines'])
+    cid = request.GET.get('catalog_id') or goal['catalog_id']
+    if catalog.get(cid) is None:
+        raise ValidationError({'catalog_id': 'unknown architecture'})
     n = max(1, round(d.sheets.count() * 0.7))
-    cfg = recommended(goal['catalog_id'], {'train_items': n})
-    return Response({g: pricing.estimate_training(goal['catalog_id'], cfg, n, g) for g in ('cpu-local', 'nvidia-t4', 'nvidia-a10g')})
+    overrides = {k: request.GET[k] for k in ('epochs', 'batch_size', 'crops_per_sheet', 'training_scale') if request.GET.get(k)}
+    try:
+        cfg = {**recommended(cid, {'train_items': n}), **validate(cid, overrides)} if overrides else recommended(cid, {'train_items': n})
+    except ConfigError as e:
+        raise ValidationError({'detail': str(e)})
+    return Response({g: pricing.estimate_training(cid, cfg, n, g) for g in ('cpu-local', 'nvidia-t4', 'nvidia-a10g')})
+
+
+@api_view(['GET'])
+def training_defaults(request):
+    """Recommended settings for an architecture plus the validation schema, for the Train screen's advanced mode."""
+    from .training.config import ENUMS, SCHEMA, ConfigError, recommended
+
+    cid = request.GET.get('catalog_id', '')
+    n = int(request.GET.get('train_items') or 5)
+    try:
+        cfg = recommended(cid, {'train_items': n})
+    except ConfigError as e:
+        raise ValidationError({'catalog_id': str(e)})
+    return Response({'config': cfg, 'schema': {k: {'type': t.__name__, 'min': lo, 'max': hi} for k, (t, lo, hi) in SCHEMA.items() if k in cfg},
+                     'enums': {k: sorted(v) for k, v in ENUMS.items() if k in cfg}})

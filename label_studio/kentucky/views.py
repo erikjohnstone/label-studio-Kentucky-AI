@@ -16,7 +16,7 @@ from .models import Sheet
 
 PAGES = {
     'home': 'Plan sets', 'project': 'Plan set', 'markup': 'Check sheet', 'graph': 'Plan structure', 'models': 'Models',
-    'train': 'Train a model', 'run': 'Training', 'deployments': 'Deployments', 'apikeys': 'API keys', 'api': 'API docs',
+    'train': 'Train a model', 'run': 'Training', 'experiments': 'Experiments', 'deployments': 'Deployments', 'apikeys': 'API keys', 'api': 'API docs',
     'billing': 'Billing', 'team': 'Team & settings',
 }
 
