@@ -85,3 +85,7 @@ CLAUDE.local.md
 web/libs/editor/tests/coverage
 web/coverage-chunks
 .cache
+
+# Kentucky AI: local frontend build outputs copied for runserver
+label_studio/core/static/js/manifest.json
+label_studio/core/static/js/sw.js.map
