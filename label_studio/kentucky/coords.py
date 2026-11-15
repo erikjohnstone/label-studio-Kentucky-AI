@@ -154,3 +154,25 @@ class SheetFrame:
 
     def to_dict(self):
         return {'source_to_image': to_list(self.m), 'width': self.width, 'height': self.height}
+
+
+def clean_polygon(poly, W=None, H=None):
+    """Make an outline usable for training: repair self-crossings (mask tracing produces them), clip to the sheet,
+    keep the largest piece. Returns a list of [x, y] or None if nothing usable is left."""
+    from shapely.geometry import Polygon, box
+    from shapely.validation import make_valid
+
+    if not poly or len(poly) < 3:
+        return None
+    p = Polygon(poly)
+    if p.is_valid and (W is None or (min(x for x, _ in poly) >= -1 and min(y for _, y in poly) >= -1 and max(x for x, _ in poly) <= W + 1 and max(y for _, y in poly) <= H + 1)):
+        return [list(map(float, c)) for c in poly]
+    g = make_valid(p)
+    if W is not None:
+        g = g.intersection(box(0, 0, W, H))
+    parts = [x for x in getattr(g, 'geoms', [g]) if x.geom_type == 'Polygon' and x.area > 0]
+    if not parts:
+        return None
+    best = max(parts, key=lambda x: x.area).simplify(0.5, preserve_topology=True)
+    out = [[float(x), float(y)] for x, y in list(best.exterior.coords)[:-1]]
+    return out if len(out) >= 3 else None

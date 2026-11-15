@@ -106,16 +106,17 @@
   Object.assign(KA, { api, h, svgEl, toast, dialog, guard, fmt, chip, empty, mount, icon, setTop, sheetFrame, jobChip, LABEL, nice, cap });
 
   // nav + theme
-  const NAV = { markup: 'home', home: 'home', project: 'home', train: 'models', run: 'models', models: 'models', deployments: 'deployments', apikeys: 'apikeys', api: 'api', billing: 'billing', team: 'team' };
+  const NAV = { markup: 'home', home: 'home', project: 'home', train: 'home', run: 'models', models: 'models', deployments: 'deployments', apikeys: 'apikeys', api: 'api', billing: 'billing', team: 'team' };
   document.querySelectorAll('[data-nav]').forEach((a) => a.classList.toggle('on', a.dataset.nav === NAV[page]));
-  const setThemeLabel = () => { const l = document.getElementById('ka-theme-label'); if (l) l.textContent = document.documentElement.dataset.theme === 'dark' ? 'Light mode' : 'Dark mode'; };
-  setThemeLabel();
-  document.getElementById('ka-theme')?.addEventListener('click', () => {
-    const next = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
-    document.documentElement.dataset.theme = next;
-    try { localStorage.setItem('ka-theme', next); } catch (e) { /* ignore */ }
-    setThemeLabel();
-  });
+  // theme: Light / Dark (remembered per browser); the review canvas follows it too
+  KA.setTheme = (t) => {
+    document.documentElement.dataset.theme = t;
+    try { localStorage.setItem('ka-theme', t); } catch (e) { /* ignore */ }
+    document.querySelectorAll('[data-t]').forEach((b) => b.classList.toggle('on', b.dataset.t === t));
+  };
+  KA.theme = () => (document.documentElement.dataset.theme === 'dark' ? 'dark' : 'light');
+  document.querySelectorAll('#ka-theme [data-t]').forEach((b) => b.addEventListener('click', () => KA.setTheme(b.dataset.t)));
+  KA.setTheme(KA.theme());
 
   const P = (KA.PAGES = {});
   function tile(k, v, d, good, onclick) {
@@ -490,6 +491,10 @@
   };
 
   // ------------------------------------------------------------------ boot
-  const run = P[page];
-  if (run) run().catch((e) => { console.error(e); mount(empty('Something went wrong', e.message, h('button.btn', { onclick: () => location.reload() }, 'Try again'))); });
+  Object.assign(KA, { wireDrop, deployDialog, compareView, techDetails, COLORS, niceItem, plural, arrow, headx, ACTIVE, STATUS });
+  // boot after every page script has registered (flow.js overrides some pages)
+  setTimeout(() => {
+    const run = P[page];
+    if (run) run().catch((e) => { console.error(e); mount(empty('Something went wrong', e.message, h('button.btn', { onclick: () => location.reload() }, 'Try again'))); });
+  }, 0);
 })();

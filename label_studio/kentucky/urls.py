@@ -1,6 +1,6 @@
 from django.urls import path
 
-from . import api, views
+from . import api, review_api, views
 
 app_name = 'kentucky'
 
@@ -70,6 +70,11 @@ urlpatterns = [
 
 urlpatterns += [
     path(A + 'sheets/<int:pk>/markup/', api.sheet_markup),
+    path(A + 'sheets/<int:pk>/review/', review_api.sheet_review),
+    path(A + 'sheets/<int:pk>/decide/', review_api.sheet_decide),
+    path(A + 'sheets/<int:pk>/find-more/', review_api.sheet_find_more),
+    path(A + 'sheets/<int:pk>/done/', review_api.sheet_done),
+    path(A + 'home/', review_api.home),
     path('ka/engine/<path:path>', views.engine_asset, name='engine-asset'),
 ]
 urlpatterns += [path(A + 'datasets/<int:pk>/train/', api.dataset_train)]

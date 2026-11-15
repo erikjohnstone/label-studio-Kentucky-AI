@@ -268,8 +268,13 @@ def propose_from_model(sheet, dataset, model_version) -> list[Proposal]:
     res = predict(model_version, {'sheet_id': sheet.id}, sheet.organization_id)
     props = []
     if res['task'] in ('semantic_segmentation', 'instance_segmentation'):
+        from ..coords import clean_polygon
+
         for p in res['predictions']:
-            props.append(_prop(dataset, sheet, Proposal.Kind.CV_OBJECT, {'label': p['label'], 'polygon': p['polygon']}, p['confidence'],
+            poly = clean_polygon(p.get('polygon'), sheet.width, sheet.height)
+            if poly is None:
+                continue
+            props.append(_prop(dataset, sheet, Proposal.Kind.CV_OBJECT, {'label': p['label'], 'polygon': poly}, p['confidence'],
                                {'model_version': model_version.id, 'task': res['task']},
                                f'Predicted by {model_version.model.name} v{model_version.version}', agent=MODEL_AGENT,
                                version=f'{model_version.model.name}:v{model_version.version}', mv=model_version))

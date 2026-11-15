@@ -15,7 +15,7 @@ from .ingest.pipeline import read_tile
 from .models import Sheet
 
 PAGES = {
-    'home': 'Datasets', 'project': 'Project', 'markup': 'Mark up plan', 'graph': 'Plan structure', 'models': 'Models',
+    'home': 'Plan sets', 'project': 'Plan set', 'markup': 'Check sheet', 'graph': 'Plan structure', 'models': 'Models',
     'train': 'Train a model', 'run': 'Training', 'deployments': 'Deployments', 'apikeys': 'API keys', 'api': 'API docs',
     'billing': 'Billing', 'team': 'Team & settings',
 }
@@ -34,7 +34,8 @@ def page(request, name='home', pk=None):
         raise Http404()
     _org(request)
     return render(request, 'kentucky/app.html', {'page': name, 'title': PAGES[name], 'pk': pk or '', 'user_email': request.user.email,
-                                                 'org_title': request.user.active_organization.title})
+                                                 'org_title': request.user.active_organization.title,
+                                                 'editor': request.GET.get('editor') == '1'})
 
 
 @login_required

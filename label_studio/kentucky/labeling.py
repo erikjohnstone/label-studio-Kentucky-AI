@@ -142,6 +142,7 @@ def _result_geometry(r, W, H):
     ow, oh = r.get('original_width') or W, r.get('original_height') or H
     if t == 'polygonlabels':
         poly = coords.ls_percent_to_image(v.get('points', []), ow, oh)
+        poly = coords.clean_polygon(poly, ow, oh) or poly
         a = np.asarray(poly) if poly else np.zeros((0, 2))
         bbox = [float(a[:, 0].min()), float(a[:, 1].min()), float(np.ptp(a[:, 0])), float(np.ptp(a[:, 1]))] if len(a) else None
         return label, 'polygon', {'polygon': poly, 'bbox': bbox}
@@ -206,6 +207,11 @@ def sync_from_label_studio(dataset, sheets=None) -> dict:
                 if r.get('id') in pred_ids:
                     prov = Provenance.AGENT_ACCEPTED
                     proposal = Proposal.objects.filter(ls_prediction_id=ann.parent_prediction_id).first()
+                elif str(r.get('id', '')).startswith('ka') and str(r['id'])[2:].isdigit():
+                    # kept on the review screen: region id = ka<proposal id>
+                    proposal = Proposal.objects.filter(id=int(str(r['id'])[2:]), sheet=sheet).first()
+                    if proposal is not None:
+                        prov = Provenance.AGENT_ACCEPTED
                 obj = CanonicalObject.objects.filter(ls_annotation_id=ann.id, ls_result_id=r.get('id', ''), sheet=sheet).first()
                 if obj is None:
                     obj = CanonicalObject.objects.create(
@@ -215,6 +221,10 @@ def sync_from_label_studio(dataset, sheets=None) -> dict:
                         attributes={'ls_label': label},
                     )
                     stats['created'] += 1
+                elif (obj.label == canon and not obj.deleted and obj.geometry != geom
+                      and coords.clean_polygon((obj.geometry or {}).get('polygon'), sheet.width, sheet.height) == geom.get('polygon')):
+                    obj.geometry = geom  # same outline, only repaired: keep its review status
+                    obj.save(update_fields=['geometry'])
                 elif obj.geometry != geom or obj.label != canon or obj.deleted:
                     obj.history.append({'at': timezone.now().isoformat(), 'action': 'edited_in_label_studio',
                                         'before': {'label': obj.label, 'geometry': obj.geometry}})

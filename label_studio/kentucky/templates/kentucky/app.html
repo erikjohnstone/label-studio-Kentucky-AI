@@ -4,9 +4,9 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{{ title }} · Kentucky AI</title>
-  <meta name="theme-color" content="#f7f8f8">
   <link rel="stylesheet" href="{% static 'kentucky/fonts/fonts.css' %}">
   <link rel="stylesheet" href="{% static 'kentucky/ka.css' %}">
+  {% if page == 'markup' and not editor %}<link rel="stylesheet" href="{% static 'kentucky/review.css' %}">{% endif %}
   <script>try{var t=localStorage.getItem('ka-theme');if(t)document.documentElement.dataset.theme=t;}catch(e){}</script>
 </head>
 <body data-page="{{ page }}" data-pk="{{ pk }}" data-user="{{ user_email }}" data-org="{{ org_title }}">
@@ -16,14 +16,13 @@
 <div class="shell">
   <aside class="side" aria-label="Main">
     <a class="brand" href="/ka/" aria-label="Kentucky AI home">
-      <svg viewBox="0 0 64 32" aria-hidden="true"><defs><pattern id="scan" width="4" height="4" patternUnits="userSpaceOnUse"><rect width="4" height="2.6" fill="#62d4dc"/></pattern></defs><path d="M4 30 L18 6 H30 L16 30 Z M22 30 L36 6 H62 L58 14 H45 L36 30 Z" fill="url(#scan)"/></svg>
+      <span class="m"><svg viewBox="0 0 64 32" aria-hidden="true"><defs><pattern id="scan" width="4" height="4" patternUnits="userSpaceOnUse"><rect width="4" height="2.6" fill="#62d4dc"/></pattern></defs><path d="M4 30 L18 6 H30 L16 30 Z M22 30 L36 6 H62 L58 14 H45 L36 30 Z" fill="url(#scan)"/></svg></span>
       <b>Kentucky AI</b>
     </a>
-    <div class="org"><span class="org-dot"></span><span>{{ org_title }}</span></div>
     <nav>
-      <a class="nav" data-nav="home" href="/ka/"><svg viewBox="0 0 24 24"><path d="M4 5h16v14H4z"/><path d="M4 10h16M9 10v9"/></svg><span>Plan sets</span></a>
-      <a class="nav" data-nav="models" href="/ka/models/"><svg viewBox="0 0 24 24"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/></svg><span>Models</span></a>
-      <a class="nav" data-nav="deployments" href="/ka/deployments/"><svg viewBox="0 0 24 24"><path d="M4 12h12M12 6l6 6-6 6M20 4v16"/></svg><span>Deployments</span></a>
+      <a class="nav" data-nav="home" href="/ka/"><svg viewBox="0 0 24 24"><path d="M4 5h16v14H4z"/><path d="M4 10h16M9 10v9"/></svg><span>Plan sets</span><span class="c" id="nc-home"></span></a>
+      <a class="nav" data-nav="models" href="/ka/models/"><svg viewBox="0 0 24 24"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/></svg><span>Models</span><span class="c" id="nc-models"></span></a>
+      <a class="nav" data-nav="deployments" href="/ka/deployments/"><svg viewBox="0 0 24 24"><path d="M4 12h12M12 6l6 6-6 6M20 4v16"/></svg><span>Deployments</span><span class="c" id="nc-deployments"></span></a>
     </nav>
     <div class="nav-label">Developers</div>
     <nav>
@@ -36,7 +35,10 @@
       <a class="nav" data-nav="team" href="/ka/team/"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.8-3.6 3.4-5.5 6.5-5.5s5.7 1.9 6.5 5.5"/><path d="M16 4.5a3.5 3.5 0 0 1 0 7M18 14.5c2 .6 3.2 2.4 3.5 5.5"/></svg><span>Team</span></a>
     </nav>
     <div class="grow"></div>
-    <button class="nav" id="ka-theme" type="button"><svg viewBox="0 0 24 24"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></svg><span id="ka-theme-label">Dark mode</span></button>
+    <div class="themeseg" id="ka-theme" role="group" aria-label="Theme">
+      <button type="button" data-t="light"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>Light</button>
+      <button type="button" data-t="dark"><svg viewBox="0 0 24 24"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></svg>Dark</button>
+    </div>
     <div class="me"><span class="avatar">{{ user_email|slice:":1"|upper }}</span><span class="me-mail">{{ user_email }}</span></div>
   </aside>
   <div class="main">
@@ -47,7 +49,8 @@
 {% endif %}
 <div class="toasts" id="ka-toasts" role="status" aria-live="polite"></div>
 <script src="{% static 'kentucky/ka.js' %}"></script>
+<script src="{% static 'kentucky/flow.js' %}"></script>
 {% if page == 'graph' %}<script src="{% static 'kentucky/graph_studio.js' %}"></script>{% endif %}
-{% if page == 'markup' %}<script src="{% static 'kentucky/markup.js' %}"></script>{% endif %}
+{% if page == 'markup' %}{% if editor %}<script src="{% static 'kentucky/markup.js' %}"></script>{% else %}<script src="{% static 'kentucky/review.js' %}"></script>{% endif %}{% endif %}
 </body>
 </html>
