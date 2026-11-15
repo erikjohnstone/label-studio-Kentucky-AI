@@ -74,10 +74,17 @@ drawings — production accuracy must be measured on customer plans.
 * Stripe: verified against a mocked Stripe API in test mode; never called the real API (no key).
 * Postgres and a real R2/S3 bucket in production (S3 code path verified only against moto); Railway/hosted deployment.
 
-## Production start (no hosting service connected)
-`deploy/kentucky/start-web.sh` under gunicorn on port 8091 with the dev database: `/health/` 200, `/ka/` 302 → login,
-static 200, `/api/ka/home/` without a session 401, and an authenticated `POST /api/ka/v1/deployments/<slug>/predict`
-returned predictions. `Dockerfile.kentucky` was not built here (no Docker daemon in this environment).
+## Production build and PostgreSQL (no hosting service connected)
+* **PostgreSQL 16** (local): all migrations apply; the full suite passes on Postgres (`50 passed in 317 s`, connection vendor `postgresql`).
+* **Image**: `Dockerfile.kentucky` built successfully (4.3 GB). In this sandbox the build needed the sandbox's TLS proxy CA
+  and an HTTPS Debian mirror injected into a throwaway copy of the Dockerfile; the committed file is unchanged and needs
+  neither on a normal builder.
+* **Containers**: web (`start-web.sh`, gunicorn) and worker (`start-worker.sh`) from the image, on Postgres, sharing a
+  data volume. `/health/` 200, `/ka/` 302 → login, static 200, labeling engine 200. Browser run against it: 3 PDFs uploaded
+  → AI mark-up on each sheet (geometry agent; no model yet) → 151 items kept and approved → training ran in the worker
+  container (LR-ASPP, completed in ~3 min) → results page "Model v1 finds 10 of every 10 doors" on its held-out sheet →
+  deployed → API key → authenticated predict on an unseen sheet: 200, 74 items, 782 ms, metered $0.002.
+* Lesson recorded in DEPLOYMENT.md: separate web and worker services need shared storage (S3/R2 backend or a volume).
 
 Two production bugs found by these tests and fixed: job specs used absolute paths from the orchestrator machine
 (would break every remote provider) — now relative to the job directory; newer botocore's default streaming

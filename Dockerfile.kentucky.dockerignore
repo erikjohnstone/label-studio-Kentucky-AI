@@ -1,0 +1,11 @@
+# build context for Dockerfile.kentucky (BuildKit uses <Dockerfile>.dockerignore)
+.git
+.venv
+**/node_modules
+**/.nx
+web/dist
+**/__pycache__
+**/*.pyc
+label_studio/frontend
+docs
+tests

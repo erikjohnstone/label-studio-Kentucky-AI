@@ -51,4 +51,7 @@ implemented; it would reuse the Modal container with a web endpoint.
   and **worker** `bash deploy/kentucky/start-worker.sh` (`ka_worker`: training jobs + always-on hosting meter).
 * Railway: `deploy/kentucky/railway.json` (Dockerfile build, `/health/` check). Add Postgres and set `DJANGO_DB=default`,
   `POSTGRE_HOST/PORT/NAME/USER/PASSWORD`, `SECRET_KEY`, `LABEL_STUDIO_HOST`, the S3/R2 variables and (later) Stripe and GPU keys.
+* Web and worker are separate processes/containers: they must share file storage — set the S3/R2 backend
+  (`KA_STORAGE_BACKEND=s3`) in production (a shared volume works on a single host).
+* Verified locally: image built and run as web + worker on PostgreSQL 16 with the full browser flow (see TEST_RESULTS.md).
 * Not deployed yet — no hosting service is connected.

@@ -44,7 +44,7 @@ Legend: **Verified** = implemented and exercised by tests and/or a real end-to-e
 * Kentucky AI pretrained models: **Not available** — none exist in the audited repositories; the UI says so.
 * Storage: local filesystem backend **Verified**; S3-compatible backend for Cloudflare R2 / S3 / MinIO **Verified against an emulated S3 API (moto)**, not yet against a real bucket. Enable with `KA_STORAGE_BACKEND=s3`, `KA_S3_BUCKET`, `KA_S3_ENDPOINT_URL`, `KA_S3_REGION` and the standard AWS key variables.
 * Hosting: **Pay per request** (metered per call) and **Always on** (weights kept loaded, billed hourly by the worker, idempotent per deployment-hour, pro-rata on pause, refused / auto-paused at the monthly limit) — **Verified** locally. Both run in the platform's own process; separate GPU inference instances are **Not implemented**.
-* Hosted platform: production image `Dockerfile.kentucky` (Debian + Python 3.12, CPU torch, built frontend + labeling engine), `deploy/kentucky/start-web.sh` (migrate, collectstatic, gunicorn on `$PORT`) and `start-worker.sh` (`ka_worker`), `deploy/kentucky/railway.json`. Start scripts **verified** locally under gunicorn (health 200, app, static, authenticated predict); image build **not verified** (no Docker daemon here); **not deployed** — no hosting service connected, per instruction.
+* Hosted platform: production image `Dockerfile.kentucky` (Debian + Python 3.12, CPU torch, built frontend + labeling engine), `deploy/kentucky/start-web.sh` (migrate, collectstatic, gunicorn on `$PORT`) and `start-worker.sh` (`ka_worker`), `deploy/kentucky/railway.json`. **Verified locally**: the image was built (4.3 GB) and run as separate web and worker containers on PostgreSQL 16; the full contractor flow ran through the browser against it (upload → AI mark-up → Keep/Done → training in the worker container → results → deploy → API key → authenticated predict). Web and worker must share file storage: use the S3/R2 backend (or a shared volume). **Not deployed** — no hosting service connected, per instruction.
 
 ## What needs credentials / paid verification
 | Item | Needs |
@@ -53,7 +53,7 @@ Legend: **Verified** = implemented and exercised by tests and/or a real end-to-e
 | Lambda GPU training | `LAMBDA_API_KEY`, region, SSH key name, S3/R2 bucket |
 | Stripe | `KA_STRIPE_SECRET_KEY` (test mode first), real price table in `KA_PRICING` |
 | Object storage | R2/S3 bucket + access keys (backend implemented) |
-| Production DB / hosting | Postgres (`DJANGO_DB=default` + `POSTGRE_*` vars), a host for the web + worker services (Railway etc.), domain, TLS |
+| Production DB / hosting | A managed Postgres (schema + all 50 tests verified on PostgreSQL 16 locally), a host for the web + worker services (Railway etc.), domain, TLS |
 
 ## Start the platform locally
 ```bash
