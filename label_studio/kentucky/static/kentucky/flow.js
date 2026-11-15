@@ -246,11 +246,11 @@
         const fields = cfg ? Object.keys(schema).filter((k) => ['epochs', 'batch_size', 'lr', 'weight_decay', 'crop_size', 'crops_per_sheet', 'training_scale', 'hidden', 'layers', 'heads', 'dropout', 'early_stopping_patience', 'seed', 'max_runtime_s'].includes(k)) : [];
         body.replaceChildren(
           step(1, 'What should it learn?', h('div.advgrid', {}, TASKLIST.map((t) => opt(task === t, () => { task = t; cid = null; draw(); }, TASKS[t], TASKDESC[t], [rd.ready_for?.[t] ? lic('Your labels are ready', true) : lic('Needs more labels')])))),
-          step(2, 'Model architecture', h('div.advgrid', {}, arches().map((a) => opt(cid === a.id, () => { cid = a.id; init = null; base = null; cfg = null; draw(); }, a.name, a.description,
+          step(2, 'Model architecture', h('div.advgrid', {}, arches().map((a) => opt(cid === a.id, () => { cid = a.id; init = null; base = null; cfg = null; draw(); }, a.plain_name || a.name, h('span', {}, h('span.techname', {}, a.name.replace(/ \((pretrained|architecture)\)$/, '')), h('br'), a.description),
             [lic(`Code: ${a.implementation_license}`, true), a.inits.some((i) => i.id === 'pretrained' && i.commercially_deployable) ? lic('Pretrained · OK to deploy', true) : null, a.badge ? h('span.pill.cy', {}, a.badge) : null, a.experimental ? lic('Experimental', false) : null, lic(a.cpu_trainable ? 'Trains on our servers' : `Needs GPU (${a.gpu_recommended})`, a.cpu_trainable ? true : null)].filter(Boolean))))),
           step(3, 'Starting point', h('div.advgrid', {},
             opt(false, null, 'Kentucky AI model', cat.kentucky_models_note || 'Coming soon', [lic('Not available yet')], true),
-            inits.map((i) => opt(init === i.id, () => { init = i.id; base = null; draw(); }, i.id === 'scratch' ? 'Start from zero' : i.label, i.note || i.checkpoint_license,
+            inits.map((i) => opt(init === i.id, () => { init = i.id; base = null; draw(); }, i.id === 'scratch' ? 'Start from zero' : 'Pretrained start', i.id === 'scratch' ? (i.note || '') : h('span', {}, h('span.techname', {}, i.label), h('br'), i.note || i.checkpoint_license),
               [lic(i.commercially_deployable === true ? 'OK to deploy commercially' : 'Legal review pending — can’t deploy', i.commercially_deployable === true ? true : false)])),
             mine.map((v) => opt(init === 'checkpoint' && base === v.id, () => { init = 'checkpoint'; base = v.id; draw(); }, `Your model v${v.version} · ${v.dataset_name || 'plan set'}`, `${v.report ? Math.round(v.report.score * 100) + '% on its test · ' : ''}trained ${fmt.date(v.created_at)}`, [lic('Yours to deploy', true)])))),
           cfg ? step(4, 'Settings', h('p.muted.small', { style: { margin: '-4px 0 10px' } }, 'Pre-filled with what we recommend for this model. Every value is checked before training starts.' + (init === 'checkpoint' ? ' Continuing from your model uses 0.3× this learning rate unless you change it, and keeps your model if training does not beat it.' : '')),
@@ -269,7 +269,7 @@
         const i = arch.inits.find((x) => x.id === init);
         const bv = own.find((v) => v.id === base);
         adv = { task, catalog_id: cid, init, base_model_version_id: init === 'checkpoint' ? base : null, config: over, fullConfig: { ...cfg },
-          label: arch.name, detail: init === 'checkpoint' ? `Fine-tunes your model v${bv?.version} (${bv?.dataset_name || 'plan set'})` : init === 'scratch' ? 'Starts from zero' : `Starts from ${i?.label}` + (Object.keys(over).length ? ` · ${Object.keys(over).length} custom setting${Object.keys(over).length > 1 ? 's' : ''}` : '') };
+          label: arch.plain_name || arch.name, detail: init === 'checkpoint' ? `Builds on your model v${bv?.version} (${bv?.dataset_name || 'plan set'})` : init === 'scratch' ? 'Starts from zero' : 'Pretrained start' + (Object.keys(over).length ? ` · ${Object.keys(over).length} custom setting${Object.keys(over).length > 1 ? 's' : ''}` : '') };
         close(); refresh();
       }
       draw();

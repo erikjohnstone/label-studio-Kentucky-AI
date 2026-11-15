@@ -88,7 +88,7 @@ def _ser_job(j: TrainingJob, full=False):
          'base_model_version': j.base_model_version_id,
          'model_version': j.model_versions.values_list('id', flat=True).first(),
          'report': TA.report_card(j.final_metrics, j.task) if j.status == 'COMPLETED' else None,
-         'architecture': (catalog.get(j.catalog_id) or {}).get('name', j.catalog_id), 'dataset_name': j.dataset_version.dataset.name,
+         'architecture': (catalog.get(j.catalog_id) or {}).get('plain_name') or j.catalog_id, 'architecture_tech': (catalog.get(j.catalog_id) or {}).get('name', j.catalog_id), 'dataset_name': j.dataset_version.dataset.name,
          'base_version': j.base_model_version.version if j.base_model_version_id else None,
          'deployed': Deployment.objects.filter(active_version__training_job=j, status='active').exists()}
     if full:
@@ -107,7 +107,7 @@ def _ser_mv(mv: ModelVersion, full=False):
          'headline': (mv.metrics or {}).get('headline'), 'license': mv.license, 'sha256': mv.artifact_sha256,
          'downloadable': mv.downloadable, 'classes': list(mv.label_map.values()),
          'report': TA.report_card(mv.metrics, mv.model.task),
-         'architecture': (catalog.get(mv.model.catalog_id) or {}).get('name', mv.model.catalog_id),
+         'architecture': (catalog.get(mv.model.catalog_id) or {}).get('plain_name') or mv.model.catalog_id, 'architecture_tech': (catalog.get(mv.model.catalog_id) or {}).get('name', mv.model.catalog_id),
          'init': mv.training_job.init if mv.training_job_id else None,
          'base_version': (mv.training_job.base_model_version.version if mv.training_job_id and mv.training_job.base_model_version_id else None),
          'dataset_name': mv.dataset_version.dataset.name if mv.dataset_version_id else None,

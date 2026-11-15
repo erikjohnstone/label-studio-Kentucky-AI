@@ -32,7 +32,7 @@ SCRATCH = {
 
 CATALOG = [
     {
-        'id': 'seg-lraspp-mbv3', 'task': 'semantic_segmentation', 'family': 'cv', 'name': 'LR-ASPP MobileNetV3-Large',
+        'id': 'seg-lraspp-mbv3', 'plain_name': 'Quick area marker', 'task': 'semantic_segmentation', 'family': 'cv', 'name': 'LR-ASPP MobileNetV3-Large',
         'architecture': 'torchvision.models.segmentation.lraspp_mobilenet_v3_large', **TORCHVISION, 'version': 'torchvision 0.29',
         'description': "Marks areas like rooms, walls and floors. Quick and cheap to train, so it's good for a first try. Can miss very thin lines.",
         'gpu_recommended': 'none (CPU ok) / T4', 'badge': 'Fastest', 'cpu_trainable': True,
@@ -47,7 +47,7 @@ CATALOG = [
         }],
     },
     {
-        'id': 'seg-dinov2-s', 'task': 'semantic_segmentation', 'family': 'cv', 'name': 'DINOv2-S segmentation (pretrained)',
+        'id': 'seg-dinov2-s', 'plain_name': 'Smart area marker', 'task': 'semantic_segmentation', 'family': 'cv', 'name': 'DINOv2-S segmentation (pretrained)',
         'architecture': 'transformers.Dinov2WithRegistersModel (ViT-S/14, 4 registers) + multi-layer fusion head with a full-resolution line branch',
         **HF, 'version': 'transformers>=4.48',
         'description': "Marks areas like rooms, walls and floors. The best pick when you've only labeled a few sheets or your scans are messy. Takes longer to train.",
@@ -62,7 +62,7 @@ CATALOG = [
         }, SCRATCH],
     },
     {
-        'id': 'seg-segformer-b0', 'task': 'semantic_segmentation', 'family': 'cv', 'name': 'SegFormer-B0 (architecture)',
+        'id': 'seg-segformer-b0', 'plain_name': 'Large-scale area marker', 'task': 'semantic_segmentation', 'family': 'cv', 'name': 'SegFormer-B0 (architecture)',
         'architecture': 'transformers.SegformerForSemanticSegmentation (mit-b0 config)', **HF, 'version': 'transformers>=4.40',
         'description': 'Marks areas, but starts knowing nothing. Only worth it once you have thousands of labeled sheets.',
         'gpu_recommended': 'T4 / A10G', 'cpu_trainable': True,
@@ -70,7 +70,7 @@ CATALOG = [
         'excluded_checkpoints': [{'id': 'nvidia/mit-b0', 'reason': 'NVIDIA Source Code License - non-commercial'}],
     },
     {
-        'id': 'det-dfine-s', 'task': 'instance_segmentation', 'family': 'cv', 'name': 'D-FINE-S (pretrained)',
+        'id': 'det-dfine-s', 'plain_name': 'Precise item counter', 'task': 'instance_segmentation', 'family': 'cv', 'name': 'D-FINE-S (pretrained)',
         'architecture': 'transformers.DFineForObjectDetection (HGNetV2-S backbone, fine-grained box refinement); outlines are boxes',
         **HF, 'version': 'transformers>=4.52',
         'description': 'Finds and counts items like doors, fixtures and devices. Best with small symbols and at placing each one exactly.',
@@ -85,7 +85,7 @@ CATALOG = [
         }, SCRATCH],
     },
     {
-        'id': 'det-rfdetr-s', 'task': 'instance_segmentation', 'family': 'cv', 'name': 'RF-DETR-S (pretrained)',
+        'id': 'det-rfdetr-s', 'plain_name': 'Adaptive item counter', 'task': 'instance_segmentation', 'family': 'cv', 'name': 'RF-DETR-S (pretrained)',
         'architecture': 'transformers.RfDetrForObjectDetection (DINOv2-S windowed backbone, LW-DETR decoder); outlines are boxes',
         **HF, 'version': 'transformers>=5.8',
         'description': 'Finds and counts items. Built to learn unfamiliar symbols quickly. Bigger and slower to train than D-FINE.',
@@ -101,7 +101,7 @@ CATALOG = [
         }, SCRATCH],
     },
     {
-        'id': 'det-rtdetrv2-r18', 'task': 'instance_segmentation', 'family': 'cv', 'name': 'RT-DETRv2 R18 (pretrained)',
+        'id': 'det-rtdetrv2-r18', 'plain_name': 'All-around item counter', 'task': 'instance_segmentation', 'family': 'cv', 'name': 'RT-DETRv2 R18 (pretrained)',
         'architecture': 'transformers.RTDetrV2ForObjectDetection (ResNet-18-vd, 300 queries); outlines are boxes', **HF, 'version': 'transformers>=4.49',
         'description': 'Finds and counts items. A solid all-around choice that runs fast.',
         'gpu_recommended': 'T4 / A10G (CPU ok for small sets)', 'cpu_trainable': True, 'badge': 'All-around', 'best_for': 'vector',
@@ -115,13 +115,13 @@ CATALOG = [
         }, SCRATCH],
     },
     {
-        'id': 'inst-maskrcnn-mbv3', 'task': 'instance_segmentation', 'family': 'cv', 'name': 'Mask R-CNN MobileNetV3-FPN',
+        'id': 'inst-maskrcnn-mbv3', 'plain_name': 'Shape-tracing counter', 'task': 'instance_segmentation', 'family': 'cv', 'name': 'Mask R-CNN MobileNetV3-FPN',
         'architecture': 'torchvision.models.detection.MaskRCNN + mobilenet_v3_large FPN backbone', **TORCHVISION, 'version': 'torchvision 0.29',
         'description': "Finds and counts items and traces each one's exact shape, not just a box. Needs more labeled sheets than the others.",
         'gpu_recommended': 'T4 / A10G', 'badge': 'Traces exact shapes', 'cpu_trainable': True, 'inits': [SCRATCH],
     },
     {
-        'id': 'inst-maskrcnn-r50-v2', 'task': 'instance_segmentation', 'family': 'cv', 'name': 'Mask R-CNN ResNet-50-FPN v2',
+        'id': 'inst-maskrcnn-r50-v2', 'plain_name': 'Large shape-tracing counter', 'task': 'instance_segmentation', 'family': 'cv', 'name': 'Mask R-CNN ResNet-50-FPN v2',
         'architecture': 'torchvision.models.detection.maskrcnn_resnet50_fpn_v2', **TORCHVISION, 'version': 'torchvision 0.29',
         'description': 'A bigger version of the shape tracer for large projects. Needs a powerful computer to train.', 'gpu_recommended': 'A10G / A100', 'cpu_trainable': False,
         'inits': [SCRATCH, {
@@ -133,30 +133,30 @@ CATALOG = [
         }],
     },
     {
-        'id': 'gnn-gps-node', 'task': 'node_classification', 'family': 'gnn', 'name': 'Graph transformer (GPS + GINE)',
+        'id': 'gnn-gps-node', 'plain_name': 'Long-run line labeler', 'task': 'node_classification', 'family': 'gnn', 'name': 'Graph transformer (GPS + GINE)',
         'architecture': 'torch_geometric GPSConv(GINEConv with edge features, multi-head global attention) x3 + MLP', **PYG, 'version': 'torch_geometric 2.8',
         'description': "Labels every line in PDF or CAD files. Best for long runs like duct, pipe and conduit. Doesn't work on scans.",
         'gpu_recommended': 'none (CPU ok)', 'cpu_trainable': True, 'inits': [SCRATCH], 'badge': 'Best for long runs', 'recommended': True,
     },
     {
-        'id': 'gnn-sage-node', 'task': 'node_classification', 'family': 'gnn', 'name': 'GraphSAGE node classifier',
+        'id': 'gnn-sage-node', 'plain_name': 'Fast line labeler', 'task': 'node_classification', 'family': 'gnn', 'name': 'GraphSAGE node classifier',
         'architecture': 'torch_geometric.nn.SAGEConv x3 + MLP head', **PYG, 'version': 'torch_geometric 2.8',
         'description': "Labels every line in PDF or CAD files. Stays fast even on very busy sheets. Doesn't work on scans.",
         'gpu_recommended': 'none (CPU ok)', 'badge': 'Fast on busy sheets', 'cpu_trainable': True, 'inits': [SCRATCH],
     },
     {
-        'id': 'gnn-gat-node', 'task': 'node_classification', 'family': 'gnn', 'name': 'GATv2 node classifier (edge-aware)',
+        'id': 'gnn-gat-node', 'plain_name': 'Symbol-aware line labeler', 'task': 'node_classification', 'family': 'gnn', 'name': 'GATv2 node classifier (edge-aware)',
         'architecture': 'torch_geometric.nn.GATv2Conv(edge_dim) x3 + MLP head', **PYG, 'version': 'torch_geometric 2.8',
         'description': "Labels every line in PDF or CAD files. Good at symbols and at spots where lines meet. Doesn't work on scans.",
         'gpu_recommended': 'none (CPU ok)', 'badge': 'Good at symbols', 'cpu_trainable': True, 'inits': [SCRATCH],
     },
     {
-        'id': 'gnn-gcn-node', 'task': 'node_classification', 'family': 'gnn', 'name': 'GCN node classifier',
+        'id': 'gnn-gcn-node', 'plain_name': 'Basic line labeler', 'task': 'node_classification', 'family': 'gnn', 'name': 'GCN node classifier',
         'architecture': 'torch_geometric.nn.GCNConv x3 + MLP head', **PYG, 'version': 'torch_geometric 2.8',
         'description': "The simplest line labeler. Use it to compare against the others. Doesn't work on scans.", 'gpu_recommended': 'none (CPU ok)', 'cpu_trainable': True, 'inits': [SCRATCH],
     },
     {
-        'id': 'gnn-sage-edge', 'task': 'edge_classification', 'family': 'gnn', 'name': 'GraphSAGE relation classifier',
+        'id': 'gnn-sage-edge', 'plain_name': 'Line connector', 'task': 'edge_classification', 'family': 'gnn', 'name': 'GraphSAGE relation classifier',
         'architecture': 'SAGEConv encoder + MLP([h_u, h_v, |h_u-h_v|, edge_attr])', **PYG, 'version': 'torch_geometric 2.8',
         'description': "Joins separate lines into whole runs and symbols, so you can measure a pipe's total length or count a fixture once. Doesn't work on scans.",
         'gpu_recommended': 'none (CPU ok)', 'badge': 'Measures runs', 'cpu_trainable': True, 'inits': [SCRATCH],

@@ -21,7 +21,7 @@ def test_advanced_training_options(client_a, labeled_dataset):
     assert r.status_code == 201 and r.data['ready']
     j = r.data['job']
     assert j['catalog_id'] == 'gnn-sage-node' and j['init'] == 'scratch' and j['config']['epochs'] == 3 and j['seed'] == 7
-    assert j['task'] == 'node_classification' and j['architecture'].startswith('GraphSAGE')
+    assert j['task'] == 'node_classification' and j['architecture'] == 'Fast line labeler' and j['architecture_tech'].startswith('GraphSAGE')
 
     # an unsupported setting never reaches a worker
     r = client_a.post(f'/api/ka/datasets/{ds.id}/train/', {'catalog_id': 'gnn-sage-node', 'init': 'scratch', 'config': {'epochs': 0}}, format='json')

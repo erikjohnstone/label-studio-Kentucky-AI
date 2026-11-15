@@ -544,6 +544,7 @@ polygon.k { stroke-linejoin: round; vector-effect: non-scaling-stroke; }
 .advopt.off { opacity: .55; cursor: default; box-shadow: var(--e1); }
 .advopt b { font-size: 14.5px; letter-spacing: -.015em; display: block; }
 .advopt small { display: block; color: var(--ink-3); font-size: 12.5px; margin-top: 3px; line-height: 1.45; }
+.advopt small .techname { display: inline-block; font-family: var(--mono, ui-monospace, SFMono-Regular, Menlo, monospace); font-size: 11px; letter-spacing: .02em; color: var(--ink-3); opacity: .85; margin-bottom: 2px; }
 .chips2 { display: flex; gap: 5px; flex-wrap: wrap; }
 .advfields { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 12px; }
 .advfields .field span { text-transform: capitalize; }
