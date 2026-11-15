@@ -1,0 +1,13 @@
+# Kentucky AI platform extras on top of Label Studio (versions verified in docs/kentucky/TEST_RESULTS.md).
+# CPU wheels: pip install -r label_studio/kentucky/requirements.txt --extra-index-url https://download.pytorch.org/whl/cpu
+torch==2.15.0
+torchvision==0.29.2
+torch-geometric==2.8.1
+transformers==5.23.0
+pdfplumber==0.11.10
+pypdfium2==5.15.2
+ezdxf==1.4.5
+opencv-python-headless==5.0.0.93
+rapidocr-onnxruntime==1.4.4
+onnxruntime==1.32.0
+shapely==2.2.0
