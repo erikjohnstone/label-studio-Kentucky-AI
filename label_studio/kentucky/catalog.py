@@ -47,13 +47,13 @@ CATALOG = [
         }],
     },
     {
-        'id': 'seg-dinov2-s', 'task': 'semantic_segmentation', 'family': 'cv', 'name': 'DINOv2-S segmentation (pretrained, experimental)',
+        'id': 'seg-dinov2-s', 'task': 'semantic_segmentation', 'family': 'cv', 'name': 'DINOv2-S segmentation (pretrained)',
         'architecture': 'transformers.Dinov2WithRegistersModel (ViT-S/14, 4 registers) + multi-layer fusion head with a full-resolution line branch',
         **HF, 'version': 'transformers>=4.48',
-        'description': 'Experimental. Self-supervised ViT backbone pretrained by Meta on 142M images, with a multi-scale head for thin '
-                       'linework. In our measured test (2 training sheets, CPU) it trailed LR-ASPP (mean IoU 0.10 vs 0.34), so LR-ASPP '
-                       'stays the default; try this on larger plan sets with a GPU and compare runs in Experiments.',
-        'gpu_recommended': 'T4 / A10G', 'cpu_trainable': True, 'experimental': True,
+        'description': 'Self-supervised ViT backbone pretrained by Meta on 142M images, with a multi-scale head for thin linework. '
+                       'Measured: on 10 scanned plans (7 for training) mean IoU 0.74 vs 0.63 for LR-ASPP, every item found; on a '
+                       '2-sheet set it trailed (0.10 vs 0.34). Use it once you have 5+ checked sheets; about 4x the training time.',
+        'gpu_recommended': 'T4 / A10G', 'cpu_trainable': True, 'badge': 'Best with 5+ sheets', 'min_sheets': 5,
         'inits': [{
             'id': 'pretrained', 'label': 'DINOv2-with-registers-small (Meta, Apache-2.0)', 'hf_id': 'facebook/dinov2-with-registers-small',
             'checkpoint_license': 'Apache-2.0 (model card + LICENSE)', 'commercial_use': True, 'commercially_deployable': True,
@@ -73,11 +73,26 @@ CATALOG = [
         'excluded_checkpoints': [{'id': 'nvidia/mit-b0', 'reason': 'NVIDIA Source Code License - non-commercial'}],
     },
     {
+        'id': 'det-dfine-s', 'task': 'instance_segmentation', 'family': 'cv', 'name': 'D-FINE-S (pretrained)',
+        'architecture': 'transformers.DFineForObjectDetection (HGNetV2-S backbone, fine-grained box refinement); outlines are boxes',
+        **HF, 'version': 'transformers>=4.52',
+        'description': 'DETR-family detector with fine-grained box refinement, 10M parameters. Measured on 10 scanned plans: mAP50 0.95 '
+                       '(doors 12/12, windows 11/11, walls 45/47) vs 0.75 for RT-DETRv2, and faster to train. Gives boxes.',
+        'gpu_recommended': 'T4 / A10G (CPU ok for small sets)', 'cpu_trainable': True, 'badge': 'Recommended', 'recommended': True,
+        'inits': [{
+            'id': 'pretrained', 'label': 'D-FINE-S COCO (ustc-community, Apache-2.0)', 'hf_id': 'ustc-community/dfine-small-coco',
+            'checkpoint_license': 'Apache-2.0 (model card)', 'commercial_use': True, 'commercially_deployable': True,
+            'fine_tuning_allowed': True, 'redistribution': 'allowed with license notice', 'hosting_restrictions': 'none',
+            'attribution': 'D-FINE authors (Apache-2.0); COCO-only pretraining (the Objects365 variants are excluded pending review)',
+            'checksum': None, 'revision': 'f79e65b5fbb33ceb9d3ebba042955d7410c608f8', 'source': 'https://huggingface.co/ustc-community/dfine-small-coco',
+            'note': 'Pinned revision; config vendored in training/configs.',
+        }, SCRATCH],
+    },
+    {
         'id': 'det-rtdetrv2-r18', 'task': 'instance_segmentation', 'family': 'cv', 'name': 'RT-DETRv2 R18 (pretrained)',
         'architecture': 'transformers.RTDetrV2ForObjectDetection (ResNet-18-vd, 300 queries); outlines are boxes', **HF, 'version': 'transformers>=4.49',
-        'description': 'Real-time detection transformer pretrained on COCO. Best for counting doors, windows, fixtures and devices: '
-                       'in our measured test it found 8/8 doors and scored mAP50 0.43 vs 0.16 for Mask R-CNN from zero. Gives boxes, '
-                       'so long thin items (walls) are better outlined with an "Outline areas" model.',
+        'description': 'Real-time detection transformer pretrained on COCO. Measured: mAP50 0.75 on 10 scanned plans (doors 12/12), '
+                       '0.43 vs 0.16 for Mask R-CNN from zero on a small vector set. D-FINE-S scored higher on the same scans. Gives boxes.',
         'gpu_recommended': 'T4 / A10G (CPU ok for small sets)', 'cpu_trainable': True,
         'inits': [{
             'id': 'pretrained', 'label': 'RT-DETRv2-R18 COCO (PekingU, Apache-2.0)', 'hf_id': 'PekingU/rtdetr_v2_r18vd',
@@ -87,22 +102,6 @@ CATALOG = [
             'revision': '5650961749fa93567c0d46fc7f43ea4f9e914107', 'source': 'https://huggingface.co/PekingU/rtdetr_v2_r18vd',
             'note': 'Pinned revision; config vendored in training/configs. COCO images carry mixed Flickr licenses — same basis as '
                     'other COCO-pretrained weights; weights license is Apache-2.0.',
-        }, SCRATCH],
-    },
-    {
-        'id': 'det-dfine-s', 'task': 'instance_segmentation', 'family': 'cv', 'name': 'D-FINE-S (pretrained)',
-        'architecture': 'transformers.DFineForObjectDetection (HGNetV2-S backbone, fine-grained box refinement); outlines are boxes',
-        **HF, 'version': 'transformers>=4.52',
-        'description': 'DETR-family detector with finer box localisation than RT-DETR at a smaller size (10M parameters). For doors, '
-                       'windows, fixtures and devices. Gives boxes.',
-        'gpu_recommended': 'T4 / A10G (CPU ok for small sets)', 'cpu_trainable': True,
-        'inits': [{
-            'id': 'pretrained', 'label': 'D-FINE-S COCO (ustc-community, Apache-2.0)', 'hf_id': 'ustc-community/dfine-small-coco',
-            'checkpoint_license': 'Apache-2.0 (model card)', 'commercial_use': True, 'commercially_deployable': True,
-            'fine_tuning_allowed': True, 'redistribution': 'allowed with license notice', 'hosting_restrictions': 'none',
-            'attribution': 'D-FINE authors (Apache-2.0); COCO-only pretraining (the Objects365 variants are excluded pending review)',
-            'checksum': None, 'revision': 'f79e65b5fbb33ceb9d3ebba042955d7410c608f8', 'source': 'https://huggingface.co/ustc-community/dfine-small-coco',
-            'note': 'Pinned revision; config vendored in training/configs.',
         }, SCRATCH],
     },
     {

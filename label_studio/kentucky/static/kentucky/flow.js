@@ -233,7 +233,7 @@
       const loadDefaults = async () => { const r = await api(`training/defaults/?catalog_id=${cid}&train_items=${Math.max(1, hp.done)}`); defaults = r.config; schema = r.schema; enums = r.enums; if (!cfg || cfg._cid !== cid) cfg = { ...r.config, _cid: cid }; };
       const arches = () => cat.open_models.filter((m) => m.task === task);
       const draw = async () => {
-        if (!cid || !arches().some((a) => a.id === cid)) { cid = (arches().find((a) => a.cpu_trainable) || arches()[0])?.id; init = null; cfg = null; }
+        if (!cid || !arches().some((a) => a.id === cid)) { cid = (arches().find((a) => a.recommended) || arches().find((a) => a.cpu_trainable && !(a.min_sheets > hp.done)) || arches()[0])?.id; init = null; cfg = null; }
         if (cid && (!cfg || cfg._cid !== cid)) await loadDefaults();
         const arch = arches().find((a) => a.id === cid);
         const inits = arch ? arch.inits.filter((i) => i.id !== 'checkpoint') : [];
@@ -247,7 +247,7 @@
         body.replaceChildren(
           step(1, 'What should it learn?', h('div.advgrid', {}, TASKLIST.map((t) => opt(task === t, () => { task = t; cid = null; draw(); }, TASKS[t], TASKDESC[t], [rd.ready_for?.[t] ? lic('Your labels are ready', true) : lic('Needs more labels')])))),
           step(2, 'Model architecture', h('div.advgrid', {}, arches().map((a) => opt(cid === a.id, () => { cid = a.id; init = null; base = null; cfg = null; draw(); }, a.name, a.description,
-            [lic(`Code: ${a.implementation_license}`, true), a.inits.some((i) => i.id === 'pretrained' && i.commercially_deployable) ? lic('Pretrained · OK to deploy', true) : null, a.experimental ? lic('Experimental', false) : null, lic(a.cpu_trainable ? 'Trains on our servers' : `Needs GPU (${a.gpu_recommended})`, a.cpu_trainable ? true : null)].filter(Boolean))))),
+            [lic(`Code: ${a.implementation_license}`, true), a.inits.some((i) => i.id === 'pretrained' && i.commercially_deployable) ? lic('Pretrained · OK to deploy', true) : null, a.badge ? h('span.pill.cy', {}, a.badge) : null, a.experimental ? lic('Experimental', false) : null, lic(a.cpu_trainable ? 'Trains on our servers' : `Needs GPU (${a.gpu_recommended})`, a.cpu_trainable ? true : null)].filter(Boolean))))),
           step(3, 'Starting point', h('div.advgrid', {},
             opt(false, null, 'Kentucky AI model', cat.kentucky_models_note || 'Coming soon', [lic('Not available yet')], true),
             inits.map((i) => opt(init === i.id, () => { init = i.id; base = null; draw(); }, i.id === 'scratch' ? 'Start from zero' : i.label, i.note || i.checkpoint_license,
