@@ -8,7 +8,7 @@
   const NAME = { wall: 'Walls', door: 'Doors', window: 'Windows', room: 'Rooms', room_tag: 'Room names' };
   const nm = (k) => NAME[k] || cap(KA.niceItem(k)) + 's';
   const TASKS = { semantic_segmentation: 'Outline areas', instance_segmentation: 'Item by item', node_classification: 'Name every line', edge_classification: 'Connections between lines' };
-  const TASKDESC = { semantic_segmentation: 'Paints every wall, door and window pixel. Fast; works on scans.', instance_segmentation: 'One shape per item — best for counts and review.', node_classification: 'Labels each vector line (graph network). Vector PDFs and CAD.', edge_classification: 'Learns which lines belong together.' };
+  const TASKDESC = { semantic_segmentation: 'Colors in areas like walls, rooms and floors. Works on scans and PDFs.', instance_segmentation: 'Finds each item separately, so you can count them. Works on scans and PDFs.', node_classification: 'Labels every line, like duct, pipe or wall. PDF and CAD files only.', edge_classification: 'Joins lines into whole runs and symbols, to measure lengths. PDF and CAD files only.' };
   const SW = { wall: '#62d4dc', door: '#f0b24a', window: '#9db1ff', room: '#7fcf9c', room_tag: '#7fcf9c' };
   const sw = (k) => SW[k] || '#848e8b';
   const mark = '<svg viewBox="0 0 24 24"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/></svg>';
