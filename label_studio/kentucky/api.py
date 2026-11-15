@@ -911,7 +911,7 @@ def sheet_markup(request, pk):
 
 GOALS = {
     'outlines': {'task': 'semantic_segmentation', 'catalog_id': 'seg-lraspp-mbv3'},
-    'structure': {'task': 'node_classification', 'catalog_id': 'gnn-gat-node'},
+    'structure': {'task': 'node_classification', 'catalog_id': 'gnn-gps-node'},
     'relations': {'task': 'edge_classification', 'catalog_id': 'gnn-sage-edge'},
 }
 
