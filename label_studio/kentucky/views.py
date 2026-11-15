@@ -18,7 +18,7 @@ PAGES = {
     'dashboard': 'Dashboard', 'datasets': 'Dataset Center', 'dataset': 'Dataset', 'graph': 'Graph Studio', 'catalog': 'Model Catalog',
     'training': 'Training Center', 'experiments': 'Experiments', 'experiment': 'Experiment', 'models': 'Model Registry',
     'deployments': 'Deployments', 'keys': 'API Keys', 'billing': 'Usage & Billing', 'settings': 'Organization Settings',
-    'apidocs': 'API Reference', 'labeling': 'Labeling Studio',
+    'apidocs': 'API Reference', 'labeling': 'Labeling Studio', 'markup': 'Mark up plan',
 }
 
 
@@ -80,4 +80,20 @@ def signed_file(request, token):
     resp = HttpResponse(p.read_bytes(), content_type=ctype)
     resp['Content-Disposition'] = f'attachment; filename="{data.get("f") or p.name}"'
     resp['Cache-Control'] = 'no-store'
+    return resp
+
+
+ENGINE_ROOT = None
+
+
+def engine_asset(request, path):
+    """Serve the embedded labeling engine (Label Studio editor library, Apache-2.0) under our own path."""
+    import os
+
+    from django.conf import settings
+    from django.views.static import serve
+
+    root = os.path.realpath(os.path.join(settings.BASE_DIR, '../../web/dist/libs/editor'))
+    resp = serve(request, path, document_root=root)
+    resp['Cache-Control'] = 'public, max-age=86400'
     return resp

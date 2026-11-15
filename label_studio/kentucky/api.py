@@ -84,7 +84,8 @@ def _ser_job(j: TrainingJob, full=False):
          'headline': (j.final_metrics or {}).get('headline'), 'cancel_requested': j.cancel_requested, 'attempt': j.attempt,
          'authorized_at': j.authorized_at, 'heartbeat_at': j.heartbeat_at, 'runtime_s': (j.resource_usage or {}).get('runtime_s'),
          'base_model_version': j.base_model_version_id,
-         'model_version': j.model_versions.values_list('id', flat=True).first()}
+         'model_version': j.model_versions.values_list('id', flat=True).first(),
+         'report': TA.report_card(j.final_metrics, j.task) if j.status == 'COMPLETED' else None}
     if full:
         d.update({'config': j.config, 'seed': j.seed, 'code_version': j.code_version, 'status_history': j.status_history,
                   'metrics_history': j.metrics_history, 'final_metrics': j.final_metrics, 'resource_usage': j.resource_usage,
@@ -98,7 +99,8 @@ def _ser_mv(mv: ModelVersion, full=False):
          'dataset_version': mv.dataset_version.version if mv.dataset_version_id else None,
          'dataset_id': mv.dataset_version.dataset_id if mv.dataset_version_id else None,
          'headline': (mv.metrics or {}).get('headline'), 'license': mv.license, 'sha256': mv.artifact_sha256,
-         'downloadable': mv.downloadable, 'classes': list(mv.label_map.values())}
+         'downloadable': mv.downloadable, 'classes': list(mv.label_map.values()),
+         'report': TA.report_card(mv.metrics, mv.model.task)}
     if full:
         d.update({'metrics': mv.metrics, 'input_schema': mv.input_schema, 'output_schema': mv.output_schema})
     return d
@@ -816,3 +818,52 @@ def model_version_predict(request, pk):
         return Response(run(mv, request.data, mv.organization_id))
     except InferenceError as e:
         raise ValidationError({'detail': str(e)})
+
+
+# =============================================================================== contractor mark-up (embedded LS engine)
+@api_view(['GET', 'POST'])
+def sheet_markup(request, pk):
+    """GET: everything the embedded labeling engine needs (config, image, the user's markup, AI suggestions).
+    POST {result: [...]} saves the user's markup as their Label Studio annotation and syncs it to the dataset."""
+    from tasks.models import Annotation, Prediction
+
+    from .labeling import label_config_for, sheet_image_url
+
+    s = _get(Sheet, request, pk=pk)
+    ensure_project(s.dataset)
+    if not s.ls_task_id:
+        from .labeling import ensure_tasks
+
+        ensure_tasks(s.dataset, [s])
+        s.refresh_from_db()
+    tax = current_taxonomy(s.dataset)
+    ann = Annotation.objects.filter(task_id=s.ls_task_id, completed_by=request.user, was_cancelled=False).order_by('-id').first()
+    if request.method == 'POST':
+        result = request.data.get('result')
+        if not isinstance(result, list):
+            raise ValidationError({'result': 'list required'})
+        parent = None
+        pid = request.data.get('from_suggestion')
+        if pid:
+            parent = Prediction.objects.filter(id=pid, task_id=s.ls_task_id).first()
+        if ann is None:
+            ann = Annotation.objects.create(task_id=s.ls_task_id, project_id=s.ls_task.project_id, result=result,
+                                            completed_by=request.user, parent_prediction=parent)
+        else:
+            ann.result = result
+            if parent and not ann.parent_prediction_id:
+                ann.parent_prediction = parent
+            ann.save()
+        stats = sync_from_label_studio(s.dataset, [s])
+        audit(request, 'markup.save', s, regions=len(result))
+        return Response({'saved': True, 'annotation_id': ann.id, 'sync': stats,
+                         'objects': CanonicalObject.objects.filter(sheet=s, deleted=False).count()})
+    preds = [{'id': p.id, 'model_version': p.model_version, 'score': p.score, 'result': p.result}
+             for p in Prediction.objects.filter(task_id=s.ls_task_id).order_by('-id')[:5]]
+    pending = Proposal.objects.filter(sheet=s, kind=Proposal.Kind.CV_OBJECT, status='pending').count()
+    return Response({'sheet': _ser_sheet(s), 'config': label_config_for(tax),
+                     'task': {'id': s.ls_task_id, 'data': {'image': sheet_image_url(s)}},
+                     'annotation': {'id': ann.id, 'result': ann.result} if ann else None, 'predictions': preds,
+                     'pending_suggestions': pending,
+                     'classes': [c for c in tax.classes if c['kind'] == 'cv'],
+                     'user': {'id': request.user.id, 'email': request.user.email}})

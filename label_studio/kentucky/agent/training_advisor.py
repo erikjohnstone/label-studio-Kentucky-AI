@@ -112,3 +112,48 @@ def compare(jobs) -> dict:
                      'runtime_s': (j.resource_usage or {}).get('runtime_s')})
     diffs = {k: [j.config.get(k) for j in jobs] for k in sorted(keys) if len({str(j.config.get(k)) for j in jobs}) > 1}
     return {'advisor': ADVISOR, 'rows': rows, 'config_differences': diffs}
+
+
+NICE = {'wall': 'walls', 'door': 'doors', 'window': 'windows', 'room': 'rooms', 'room_tag': 'room names', 'floor_finish': 'flooring areas',
+        'ceiling': 'ceilings', 'roof': 'roof areas', 'duct': 'duct runs', 'diffuser': 'diffusers', 'hvac_equipment': 'HVAC units',
+        'electrical_device': 'electrical devices', 'plumbing_fixture': 'plumbing fixtures', 'structural_member': 'structural members',
+        'same_object': 'pieces that belong together', 'hosted_by': 'doors/windows sitting in a wall', 'none': 'unrelated lines',
+        'other': 'other linework', 'connects_to': 'connections', 'labels': 'labels', 'bounded_by': 'room boundaries', 'contained_in': 'parts'}
+
+
+def report_card(final_metrics: dict, task: str) -> dict | None:
+    """Plain-language accuracy summary for contractors, derived only from measured test/validation metrics."""
+    if not final_metrics:
+        return None
+    split_name = 'test' if final_metrics.get('test') and (final_metrics['test'].get('n') or final_metrics['test'].get('per_class')) else 'val'
+    sp = final_metrics.get(split_name) or {}
+    items = []
+    if task == 'semantic_segmentation':
+        objs = sp.get('objects') or {}
+        for c, v in (sp.get('per_class') or {}).items():
+            if c == '__background__' or not v.get('gt_pixels'):
+                continue
+            found = (1 - objs[c]['missing_rate']) if c in objs else (v.get('recall') or 0)
+            items.append({'key': c, 'score': found, 'outline': v.get('iou')})
+    elif task == 'instance_segmentation':
+        for c, v in (sp.get('per_class_pr') or {}).items():
+            items.append({'key': c, 'score': v.get('recall') or 0, 'outline': (sp.get('per_class_ap') or {}).get(c)})
+    else:
+        for c, v in (sp.get('per_class') or {}).items():
+            if v.get('support'):
+                items.append({'key': c, 'score': v.get('recall') or 0, 'outline': v.get('f1')})
+    if not items:
+        return None
+    for i in items:
+        n = round(i['score'] * 10)
+        i['name'] = NICE.get(i['key'], i['key'].replace('_', ' '))
+        i['sentence'] = f'Finds about {n} out of 10 {i["name"]}'
+        i['level'] = 'great' if i['score'] >= 0.9 else 'good' if i['score'] >= 0.75 else 'fair' if i['score'] >= 0.5 else 'weak'
+    mean = sum(i['score'] for i in items) / len(items)
+    grade = 'A' if mean >= 0.9 else 'B' if mean >= 0.8 else 'C' if mean >= 0.65 else 'D' if mean >= 0.5 else 'Not ready'
+    weak = [i['name'] for i in sorted(items, key=lambda x: x['score']) if i['level'] in ('weak', 'fair')]
+    advice = (f'Mark up more {", ".join(weak[:2])} on a few more plans, then teach it again.' if weak
+              else 'Looks solid. Try it on a plan it has never seen before turning it on.')
+    return {'grade': grade, 'score': round(mean, 3), 'items': sorted(items, key=lambda x: -x['score']), 'advice': advice,
+            'checked_on': 'plans it never saw while learning' if split_name == 'test' else 'a held-back check set',
+            'ready_to_use': mean >= 0.75}

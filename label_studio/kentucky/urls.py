@@ -60,3 +60,10 @@ urlpatterns = [
     path(A + 'org/', api.org_info),
     path(A + 'audit/', api.audit_log),
 ]
+
+urlpatterns += [
+    path(A + 'sheets/<int:pk>/markup/', api.sheet_markup),
+    path('ka/engine/<path:path>', views.engine_asset, name='engine-asset'),
+    path('ka/markup/<int:pk>/', views.page, {'name': 'markup'}, name='markup-page'),
+    path('ka/projects/<int:pk>/', views.page, {'name': 'dataset'}, name='project-page'),
+]
