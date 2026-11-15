@@ -30,7 +30,9 @@ class Reporter:
         self.emit('metric', **kw)
 
     def heartbeat(self):
+        """Called every training step: also where Stop is honoured, so it takes seconds, not a whole round."""
         self.emit('heartbeat')
+        check_cancel(os.path.dirname(self.path))
 
 
 class Cancelled(Exception):
