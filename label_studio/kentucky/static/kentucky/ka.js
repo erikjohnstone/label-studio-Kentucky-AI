@@ -91,8 +91,7 @@
     if (a) a.replaceChildren(...(actions || []).filter(Boolean));
   }
   const mount = (...n) => document.getElementById('ka-root').replaceChildren(...n.flat().filter(Boolean));
-  const head = (kicker, title, accent, lede, actions) => h('div.pagehead', {}, h('div', {}, h('div.kicker', {}, kicker),
-    h('div.display', { style: { marginTop: '8px' } }, title, accent ? h('span.c', {}, accent) : null), lede ? h('p.lede', {}, lede) : null),
+  const head = (kicker, title, accent, lede, actions) => h('div.pagehead', {}, h('div', {}, h('h1.h1', {}, title, accent || ''), lede ? h('p.lede', {}, lede) : null),
     actions ? h('div.actions', {}, actions) : null);
   const LABEL = { semantic_segmentation: 'Plan outlines', instance_segmentation: 'Item outlines', node_classification: 'Line by line', edge_classification: 'Connections' };
   const STATUS = {
@@ -107,7 +106,7 @@
   Object.assign(KA, { api, h, svgEl, toast, dialog, guard, fmt, chip, empty, mount, icon, setTop, sheetFrame, jobChip, LABEL, nice, cap });
 
   // nav + theme
-  const NAV = { home: 'home', project: 'home', train: 'models', run: 'models', models: 'models', deployments: 'deployments', apikeys: 'apikeys', api: 'api', billing: 'billing', team: 'team' };
+  const NAV = { markup: 'home', home: 'home', project: 'home', train: 'models', run: 'models', models: 'models', deployments: 'deployments', apikeys: 'apikeys', api: 'api', billing: 'billing', team: 'team' };
   document.querySelectorAll('[data-nav]').forEach((a) => a.classList.toggle('on', a.dataset.nav === NAV[page]));
   const setThemeLabel = () => { const l = document.getElementById('ka-theme-label'); if (l) l.textContent = document.documentElement.dataset.theme === 'dark' ? 'Light mode' : 'Dark mode'; };
   setThemeLabel();
@@ -123,304 +122,311 @@
     return h('div.tile' + (onclick ? '.click' : ''), { onclick }, h('div.key', {}, k), h('div.v' + (String(v).length > 7 ? '.sm' : ''), { style: good ? { color: 'var(--scan-ink)' } : {} }, v), h('div.d', {}, d));
   }
 
-  // ================================================================== Datasets (home)
-  P.home = async () => {
-    const [ds, dash] = await Promise.all([api('datasets/'), api('dashboard/')]);
-    setTop(['Datasets']);
-    const st = [['01', 'Upload plans', ds.some((d) => d.sheets)], ['02', 'Label', ds.some((d) => d.objects)], ['03', 'Train', dash.models > 0], ['04', 'Check accuracy', dash.models > 0], ['05', 'Deploy', dash.deployments > 0]];
-    const at = st.findIndex((x) => !x[2]);
-    const progress = (d) => {
-      const steps = [d.sheets > 0, d.objects > 0, d.objects > 0 && d.approved === d.objects, d.versions > 0];
-      const i0 = steps.findIndex((x) => !x);
-      return h('span.dots', { title: 'Upload · Label · Check · Train' }, steps.map((s, i) => h('i' + (s ? '.done' : i === i0 ? '.half' : ''))));
-    };
-    const card = (d) => h('a.dcard', { href: `/ka/projects/${d.id}/` },
-      h('div.dthumb', { style: d.cover ? { backgroundImage: `url(${d.cover})` } : {} }),
-      h('div.dbody', {}, h('div.t', {}, d.name), h('div.s', {}, `${d.sheets} sheet${d.sheets === 1 ? '' : 's'} · ${fmt.n(d.objects)} labeled · ${fmt.n(d.approved)} checked`),
-        h('div.dfoot', {}, progress(d), h('span.cyan', { style: { fontWeight: 600, fontSize: '13.5px' } }, 'Open →'))));
-    const add = h('button.dcard.add', { onclick: newDataset }, h('div', {}, h('div.plus', {}, '+'), h('div.t', {}, 'New dataset'), h('div.s', {}, 'Upload plans and pick what to find')));
-    mount(
-      head('Kentucky AI · Model studio', 'Datasets', null, 'Teach AI to read your drawings — upload plans, label what to find, train a private model, deploy it.', [h('button.btn.primary', { onclick: newDataset }, icon('plus', 16), 'New dataset')]),
-      h('div.tiles', {}, tile('Datasets', fmt.n(ds.length), 'plan sets'), tile('Labeled items', fmt.n(dash.objects_approved + dash.objects_pending), `${fmt.n(dash.objects_approved)} checked`), tile('Models', fmt.n(dash.models), 'trained versions'), tile('Live APIs', fmt.n(dash.deployments), 'deployed models')),
-      h('div.steps', {}, st.map(([n, t, done], i) => h('div.step' + (done ? '.done' : i === at ? '.on' : ''), {}, h('b', {}, done ? `${n} · DONE` : i === at ? `${n} · NEXT` : n), t))),
-      h('div.grid.g3.eq', {}, ds.map(card), add));
-  };
-
-  async function newDataset() {
-    const name = h('input', { type: 'text', placeholder: 'e.g. Office buildings — architectural plans' });
-    const picks = new Set(['wall', 'door', 'window', 'room']);
-    const opts = [['wall', 'Walls'], ['door', 'Doors'], ['window', 'Windows'], ['room', 'Rooms'], ['floor_finish', 'Flooring'], ['ceiling', 'Ceilings'], ['duct', 'Ductwork'], ['diffuser', 'Diffusers'], ['hvac_equipment', 'HVAC equipment'], ['electrical_device', 'Electrical devices'], ['plumbing_fixture', 'Plumbing fixtures'], ['structural_member', 'Structural']];
-    const grid = h('div.row', { style: { gap: '8px' } }, opts.map(([k, l]) => {
-      const b = h('button.chip' + (picks.has(k) ? '.cyan' : ''), { type: 'button', style: { cursor: 'pointer', border: 0, height: '34px', fontSize: '13.5px', padding: '0 14px' } }, l);
-      b.onclick = () => { picks.has(k) ? picks.delete(k) : picks.add(k); b.classList.toggle('cyan'); };
-      return b;
-    }));
-    const consent = h('input', { type: 'checkbox' });
-    const ok = await dialog('New dataset', h('div.grid', { style: { gap: '20px' } },
-      h('label.field', {}, h('span', {}, 'Name'), name),
-      h('div', {}, h('div.key', { style: { marginBottom: '10px' } }, 'What should the AI find?'), grid, h('div.faint', { style: { fontSize: '13px', marginTop: '8px' } }, 'You can add more later.')),
-      h('label.row', { style: { alignItems: 'flex-start', gap: '10px', fontSize: '13.5px', color: 'var(--ink-3)', flexWrap: 'nowrap' } }, consent, h('span', {}, 'Let Kentucky AI use these plans to improve its own models. Off by default — your data stays yours.'))),
-    [{ label: 'Create dataset', primary: true }], 'Step 01');
-    if (!ok) return;
-    if (!name.value.trim()) return toast('Give the dataset a name', 'warn');
-    const d = await guard(() => api('datasets/', { method: 'POST', body: { name: name.value.trim(), classes: [...picks], allow_ka_model_training: consent.checked } }));
-    location.href = `/ka/projects/${d.id}/`;
+  // ================================================================== shared visual pieces
+  const COLORS = { wall: '#62d4dc', door: '#f0b24a', window: '#8fa8ff', room: '#7fcf9c', room_tag: '#7fcf9c', other: '#848e8b' };
+  const plural = (n, w) => `${n} ${w}${n === 1 ? '' : 's'}`;
+  const niceItem = (k) => ({ room_tag: 'room name', hvac_equipment: 'HVAC unit', electrical_device: 'electrical device', plumbing_fixture: 'plumbing fixture', structural_member: 'structural member', floor_finish: 'flooring area' }[k] || k.replace(/_/g, ' '));
+  // graphite drawing panel with crop marks + title strip; overlays model predictions with a scan + draw-in
+  function darkDrawing(sheet, preds, strip) {
+    const panel = h('div.panel-dark', {}, h('span.crop', {}, h('i'), h('i'), h('i'), h('i')), strip ? h('div.titlestrip', {}, strip) : null);
+    if (!sheet) return panel;
+    const svg = svgEl('svg', { viewBox: `0 0 ${sheet.width} ${sheet.height}`, preserveAspectRatio: 'xMidYMid meet' },
+      svgEl('image', { class: 'sheet-img', href: sheet.image_url, x: 0, y: 0, width: sheet.width, height: sheet.height }));
+    (preds || []).forEach((p, i) => svg.appendChild(svgEl('polygon', { class: 'pred', points: p.polygon.map((q) => q.join(',')).join(' '), fill: COLORS[p.label] || '#62d4dc', stroke: COLORS[p.label] || '#62d4dc', style: `animation-delay:${Math.min(i * 15, 900)}ms` })));
+    panel.append(h('div.drawing', {}, svg));
+    if (preds && preds.length) panel.append(h('div.scanline'));
+    return panel;
+  }
+  function headx(title, lede, actions, kicker) {
+    return h('div.pagehead', {}, h('div', {}, kicker ? h('div.kicker', { style: { marginBottom: '8px' } }, kicker) : null, h('h1.h1', {}, title), lede ? h('p.lede', {}, lede) : null),
+      actions ? h('div.actions', {}, actions) : null);
   }
 
-  // ================================================================== Dataset
-  P.project = async () => {
-    const id = PK;
-    const [d, sheets, ready, jobs, props, pending] = await Promise.all([api(`datasets/${id}/`), api(`datasets/${id}/sheets/`), api(`datasets/${id}/readiness/`), api(`jobs/?dataset=${id}`), api(`datasets/${id}/proposals/?status=pending&kind=cv_object`), api(`datasets/${id}/objects/?status=pending`)]);
-    const st = ready.stats;
-    const cvClasses = d.taxonomy.filter((c) => c.kind === 'cv' && c.name !== 'unknown');
-    const best = jobs.filter((j) => j.status === 'COMPLETED' && j.report).sort((a, b) => b.report.score - a.report.score)[0];
-    const lastJob = best || jobs[0];
-    const firstToLabel = sheets.find((s) => !s.objects) || sheets[0];
-    const canTrain = !!ready.ready_for.semantic_segmentation;
-    setTop([['Datasets', '/ka/'], d.name]);
-    const counts = st.class_counts;
-    const enough = cvClasses.filter((c) => (counts[c.name] || 0) >= 3).length;
-    const labeledSheets = sheets.filter((x) => x.objects > 0).length;
-    const checks = [
-      { done: sheets.length > 0, t: 'Upload plan sheets', s: sheets.length ? `${sheets.length} sheet${sheets.length > 1 ? 's' : ''} ready` : 'PDF, scans or CAD (DXF)', fix: ['Upload', '#upload'] },
-      { done: st.objects_total > 0, t: 'Label what the AI should find', s: st.objects_total ? `${fmt.n(st.objects_total)} items on ${labeledSheets} sheets` : 'Outline items, or let AI suggest', fix: ['Label', firstToLabel ? `/ka/markup/${firstToLabel.id}/` : '#upload'] },
-      { done: st.objects_total > 0 && st.pending === 0, t: 'Check the labels', s: st.pending ? `${st.pending} waiting for a second look` : `${fmt.n(st.approved)} checked`, fix: ['Review', '#review'] },
-      { done: canTrain, t: 'Enough examples', s: canTrain ? 'Ready to train' : `${enough} of ${cvClasses.length} items have 3+ examples`, fix: ['See counts', '#examples'] },
-      { done: !!lastJob && lastJob.status === 'COMPLETED', t: 'Train your model', s: lastJob ? `${(STATUS[lastJob.status] || [lastJob.status])[0]} · ${fmt.ago(lastJob.created_at)}` : 'Cost shown before it runs', fix: ['Train', `/ka/train/?dataset=${id}`] },
-    ];
-    const doneN = checks.filter((c) => c.done).length;
-    const nextI = checks.findIndex((c) => !c.done);
-    const checklist = h('div.card', {}, h('div.card-h', {}, h('div.h3', {}, 'Before you can train'), h('span.muted', {}, `${doneN} of ${checks.length}`)),
-      h('div.meter', { style: { marginBottom: '6px' } }, h('i', { style: { width: (doneN / checks.length) * 100 + '%' } })),
-      checks.map((c, i) => h('div.check', {}, h('span.mark' + (c.done ? '.done' : i === nextI ? '.now' : '')), h('div', {}, h('div.t', {}, c.t), h('div.s', {}, c.s)),
-        c.done ? h('span.faint', { style: { fontSize: '13px' } }, 'Done') : h('a.fix', { href: c.fix[1] }, c.fix[0], ' →'))));
-    const examples = h('div.card', { id: 'examples' }, h('div.card-h', {}, h('div.h3', {}, 'Examples per item'), h('span.muted', {}, 'aim for 30+')),
-      (() => { const withEx = cvClasses.filter((c) => counts[c.name]); const zero = cvClasses.filter((c) => !counts[c.name]); return withEx.concat(zero.slice(0, Math.max(0, 6 - withEx.length))); })().map((c) => {
-        const n = counts[c.name] || 0;
-        return h('div.bar-row', {}, h('span.row', { style: { gap: '10px', flexWrap: 'nowrap' } }, h('span.swatch', { style: { background: c.color } }), cap(c.name)),
-          h('div.meter' + (n < 3 ? '.warn' : ''), {}, h('i', { style: { width: Math.max(2, Math.min(1, n / 30) * 100) + '%' } })), h('span.mono.muted', { style: { fontSize: '12.5px', textAlign: 'right' } }, n >= 30 ? `${n} ✓` : `${n}/30`));
-      }), (() => { const shown = Math.max(cvClasses.filter((c) => counts[c.name]).length, 6); const more = cvClasses.length - shown; return more > 0 ? h('div.faint', { style: { fontSize: '13px', paddingTop: '8px' } }, `+${more} more item types with no examples yet`) : null; })());
-    const review = pending.length ? h('div.banner', { id: 'review' }, h('span.mark.now'), h('div', {}, h('b', {}, `${pending.length} labels need a second look`), h('span.muted', {}, ' — only checked labels are used for training.')),
-      h('div.row.right', {}, h('button.btn.sm', { onclick: async () => { await guard(() => api(`datasets/${id}/objects/review/`, { method: 'POST', body: { ids: pending.map((o) => o.id), status: 'rejected' } })); P.project(); } }, 'Reject all'),
-        h('button.btn.sm.primary', { onclick: async () => { await guard(() => api(`datasets/${id}/objects/review/`, { method: 'POST', body: { ids: pending.map((o) => o.id), status: 'approved' } }), `${pending.length} labels checked`); P.project(); } }, 'Approve all'))) : null;
-    const sheetCard = (s) => h('a.dcard', { href: `/ka/markup/${s.id}/` }, h('div.dthumb', { style: { backgroundImage: `url(${s.image_url})` } }),
-      h('div.dbody', {}, h('div.t', { title: s.name }, nice(s.name)), h('div.s', {}, s.has_vector ? 'Vector drawing' : 'Scan'),
-        h('div.dfoot', {}, s.objects ? chip(`${s.objects} labeled`, 'cyan') : chip('Not labeled'), h('span.cyan', { style: { fontWeight: 600, fontSize: '13.5px' } }, 'Label →'))));
-    mount(
-      head(`Dataset · ${sheets.length} sheets`, d.name, null, `Finds ${(cvClasses.filter((c) => counts[c.name]).length ? cvClasses.filter((c) => counts[c.name]) : cvClasses.slice(0, 4)).map((c) => cap(c.name).toLowerCase() + 's').join(', ')}`,
-        [firstToLabel ? h('a.btn', { href: `/ka/markup/${firstToLabel.id}/` }, icon('pen', 16), 'Label plans') : null,
-          h(canTrain ? 'a.btn.primary' : 'a.btn', { href: canTrain ? `/ka/train/?dataset=${id}` : '#examples', title: canTrain ? '' : 'Needs more checked examples' }, icon('spark', 16), 'Train model')]),
-      h('div.tiles', {},
-        tile('Plan sheets', fmt.n(st.sheets), `${st.vector_sheets} vector · ${st.raster_sheets} scanned`),
-        tile('Labeled items', fmt.n(st.objects_total), `${fmt.n(st.approved)} checked`),
-        tile('AI suggestions', fmt.n(props.length), props.length ? 'waiting for keep / dismiss' : 'none waiting'),
-        tile('Best model', lastJob?.report ? lastJob.report.grade : lastJob ? (STATUS[lastJob.status] || [''])[0] : '—', lastJob?.report ? (lastJob.report.ready_to_use ? 'ready to deploy' : 'needs more examples') : 'not trained yet', !!lastJob?.report?.ready_to_use, lastJob ? () => (location.href = `/ka/runs/${lastJob.id}/`) : null)),
-      review,
-      h('div.grid.g2.eq', {}, checklist, examples),
-      h('div.section-h', {}, h('span.kicker', {}, `Plan sheets · ${sheets.length}`)),
-      h('div.grid.g4.eq', {}, sheets.map(sheetCard), uploadCard(id)));
-    if (location.hash) document.querySelector(location.hash)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  // ================================================================== Plan sets (home)
+  P.home = async () => {
+    const [ds, dash, ms, deps] = await Promise.all([api('datasets/'), api('dashboard/'), api('models/'), api('deployments/')]);
+    setTop(['Plan sets']);
+    if (!ds.length) return firstRun();
+    const best = ms.flatMap((m) => m.versions.map((v) => ({ ...v, m }))).filter((v) => v.report && v.task === 'semantic_segmentation').sort((a, b) => b.report.score - a.report.score)[0];
+    const d0 = ds[0];
+    const sheets = await api(`datasets/${(best?.dataset_id) || d0.id}/sheets/`);
+    const sheet = sheets[0];
+    // what's next
+    let title, lede, action;
+    const live = deps.find((x) => x.status === 'active');
+    if (live) { title = 'Your model is live.'; lede = `${live.name} is answering requests. ${fmt.n(live.request_count)} so far.`; action = h('a.btn.primary.lg', { href: '/ka/deployments/' }, 'Open deployment ', arrow()); }
+    else if (best?.report?.ready_to_use) { title = 'Your model is ready to go live.'; lede = best.report.sentence; action = h('button.btn.primary.lg', { onclick: () => deployDialog(best.id, `${niceItem(best.report.items[0].key)} model`) }, 'Put it to work ', arrow()); }
+    else if (dash.objects_approved > 0) { title = 'Ready to train your first model.'; lede = `${fmt.n(dash.objects_approved)} checked labels across your plans.`; action = h('a.btn.primary.lg', { href: `/ka/train/?dataset=${d0.id}` }, 'Train model ', arrow()); }
+    else if (dash.sheets > 0) { title = 'Show the AI what to find.'; lede = 'Outline walls, doors and windows on a couple of sheets — or let AI take a first pass and you keep what is right.'; action = h('a.btn.primary.lg', { href: `/ka/markup/${sheet?.id}/` }, 'Start labeling ', arrow()); }
+    else { title = 'Add your plans.'; lede = 'Drop PDFs, scans or DXF into a plan set.'; action = h('a.btn.primary.lg', { href: `/ka/projects/${d0.id}/` }, 'Add plans ', arrow()); }
+    const panel = darkDrawing(sheet, [], sheet ? `${nice(sheet.name)} · ${best ? 'Model v' + best.version : 'Plan'}` : null);
+    const hero = h('section.hero', {}, h('div.hero-copy', {}, h('h1.h1', {}, title), h('p.lede', {}, lede), h('div.actions', {}, action, best ? h('a.btn.ghost', { href: `/ka/runs/${best.training_job}/` }, 'See accuracy') : null)), panel);
+    if (best && sheet) api(`model-versions/${best.id}/predict/`, { method: 'POST', body: { sheet_id: sheet.id } }).then((r) => panel.replaceWith(darkDrawing(sheet, r.predictions, `${nice(sheet.name)} · model v${best.version}`))).catch(() => {});
+    const cards = ds.map((d) => {
+      const steps = [d.sheets > 0, d.objects > 0, d.objects > 0 && d.approved === d.objects, d.versions > 0];
+      return h('a.pcard', { href: `/ka/projects/${d.id}/` }, h('div.pthumb', { style: d.cover ? { backgroundImage: `url(${d.cover})` } : {} }),
+        h('div.pbody', {}, h('div.t', {}, d.name), h('div.s', {}, `${plural(d.sheets, 'sheet')} · ${d.approved === d.objects && d.objects ? 'ready to train' : d.objects ? `${fmt.n(d.objects - d.approved)} to check` : 'not labeled yet'}`),
+          h('div.pfoot', {}, h('span.minibar', { title: 'Upload · Label · Check · Train' }, steps.map((s) => h('i' + (s ? '.on' : '')))), h('span.faint.small', {}, fmt.ago(d.updated_at || d.created_at)))));
+    });
+    mount(hero, h('div.section-h', {}, h('div.h2', {}, 'Plan sets'), h('span.faint', {}, plural(ds.length, 'set'))), h('div.grid.g3', {}, cards, dropCard()));
   };
-  function uploadCard(id) {
+  function dropCard(datasetId) {
     const input = h('input', { type: 'file', multiple: true, accept: '.pdf,.png,.jpg,.jpeg,.dxf', style: { display: 'none' } });
-    const box = h('button.dcard.add', { id: 'upload', onclick: () => input.click() }, h('div', {}, icon('upload', 28), h('div.t', {}, 'Add plans'), h('div.s', {}, 'Drop PDF, scans or DXF here')), input);
+    const card = h('button.pcard.ghost', { onclick: () => input.click() }, h('div', {}, svgEl('svg', { viewBox: '0 0 24 24' }, svgEl('path', { d: 'M12 16V4M7 9l5-5 5 5M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3' })),
+      h('div.t', {}, datasetId ? 'Add plans' : 'New plan set'), h('div.s', {}, 'Drop PDFs, scans or DXF')), input);
+    wireDrop(card, input, datasetId);
+    return card;
+  }
+  function wireDrop(el, input, datasetId) {
     const go = async (files) => {
       if (!files.length) return;
-      const fd = new FormData(); [...files].forEach((f) => fd.append('file', f));
-      box.classList.add('over'); box.querySelector('.t').textContent = `Reading ${files.length} file${files.length > 1 ? 's' : ''}…`;
+      el.classList.add('over');
+      const t = el.querySelector('.t'); if (t) t.textContent = `Reading ${plural(files.length, 'file')}…`;
+      let id = datasetId;
       try {
+        if (!id) { const d = await api('datasets/', { method: 'POST', body: { name: files[0].name.replace(/\.[^.]+$/, '').replace(/[_-]+/g, ' '), classes: ['wall', 'door', 'window', 'room'] } }); id = d.id; }
+        const fd = new FormData(); [...files].forEach((f) => fd.append('file', f));
         const res = await api(`datasets/${id}/documents/`, { method: 'POST', body: fd });
-        res.forEach((r) => toast(r.status === 'ready' ? `${r.filename} — ${r.sheets.length} sheet${r.sheets.length > 1 ? 's' : ''} ready` : `${r.filename}: ${r.error}`, r.status === 'ready' ? 'pos' : 'danger'));
+        const bad = res.filter((r) => r.status !== 'ready');
+        bad.forEach((r) => toast(`${r.filename}: ${r.error}`, 'danger'));
+        if (!datasetId) { location.href = `/ka/projects/${id}/`; return; }
+        toast(`${plural(res.reduce((a, r) => a + (r.sheets?.length || 0), 0), 'sheet')} added`, 'pos');
       } catch (e) { toast(e.message, 'danger'); }
-      P.project();
+      P[page]();
     };
     input.onchange = () => go(input.files);
-    box.ondragover = (e) => { e.preventDefault(); box.classList.add('over'); };
-    box.ondragleave = () => box.classList.remove('over');
-    box.ondrop = (e) => { e.preventDefault(); go(e.dataTransfer.files); };
-    return box;
+    el.ondragover = (e) => { e.preventDefault(); el.classList.add('over'); };
+    el.ondragleave = () => el.classList.remove('over');
+    el.ondrop = (e) => { e.preventDefault(); go(e.dataTransfer.files); };
+  }
+  function firstRun() {
+    const input = h('input', { type: 'file', multiple: true, accept: '.pdf,.png,.jpg,.jpeg,.dxf', style: { display: 'none' } });
+    const zone = h('div.drop-all', { onclick: () => input.click() }, h('div', {}, svgEl('svg', { viewBox: '0 0 200 120', width: 200, height: 120, style: 'stroke:var(--ink-3);stroke-width:1.4;fill:none' }, svgEl('rect', { x: 10, y: 10, width: 180, height: 100, rx: 2 }), svgEl('path', { d: 'M10 78h58V40h56v38h66M68 40V10M124 58h66' }), svgEl('path', { d: 'M68 40h56v38H68z', style: 'stroke:var(--teal)' })),
+      h('h1.h1', { style: { marginTop: '18px' } }, 'Drop your plans to start'), h('p.lede', { style: { margin: '8px auto 20px' } }, 'PDF, scans or DXF. We read every page, find the lines and text, and get it ready to label.'), h('span.btn.primary.lg', {}, 'Choose files')), input);
+    wireDrop(zone, input, null);
+    mount(zone);
   }
 
-  // ================================================================== Train
+  // ================================================================== Plan set (dataset)
+  P.project = async () => {
+    const id = PK;
+    const [d, sheets, ready, jobs, pending] = await Promise.all([api(`datasets/${id}/`), api(`datasets/${id}/sheets/`), api(`datasets/${id}/readiness/`), api(`jobs/?dataset=${id}`), api(`datasets/${id}/objects/?status=pending`)]);
+    const st = ready.stats, counts = st.class_counts;
+    const cv = d.taxonomy.filter((c) => c.kind === 'cv' && c.name !== 'unknown');
+    const used = cv.filter((c) => counts[c.name]);
+    const canTrain = !!ready.ready_for.semantic_segmentation;
+    setTop([['Plan sets', '/ka/'], d.name]);
+    const pendingBy = {}; pending.forEach((o) => (pendingBy[o.sheet_id] = (pendingBy[o.sheet_id] || 0) + 1));
+    const firstToLabel = sheets.find((s) => !s.objects) || sheets[0];
+    const chips = (used.length ? used : cv.slice(0, 4)).map((c) => h('span.chip', {}, h('span.swatch', { style: { background: c.color } }), `${cap(niceItem(c.name))}s ${fmt.n(counts[c.name] || 0)}`));
+    const sheetCards = sheets.map((s) => h('a.pcard', { href: `/ka/markup/${s.id}/` }, h('div.pthumb.sq', { style: { backgroundImage: `url(${s.image_url})` } }),
+      h('span.corner', {}, pendingBy[s.id] ? chip(`${pendingBy[s.id]} to review`, 'warn') : s.objects ? chip('✓ labeled', 'pos') : chip('not labeled')),
+      h('div.pbody', {}, h('div.t', { title: s.name }, nice(s.name)), h('div.s', {}, `${s.has_vector ? 'Vector' : 'Scan'} · ${plural(s.objects, 'label')}`))));
+    // readiness bar
+    const short = used.filter((c) => (counts[c.name] || 0) < 3);
+    let msg, act;
+    if (!sheets.length) { msg = [h('b', {}, 'Add plans to get started.')]; act = null; }
+    else if (!st.objects_total) { msg = [h('b', {}, 'Label a couple of sheets.'), h('span.m', {}, ' Outline items, or let AI take a first pass.')]; act = h('a.btn.primary', { href: `/ka/markup/${firstToLabel.id}/` }, 'Start labeling ', arrow()); }
+    else if (pending.length) { msg = [h('b', {}, `${plural(pending.length, 'label')} to check.`), h('span.m', {}, ' Only checked labels are used to train.')]; act = h('button.btn.primary', { onclick: async () => { await guard(() => api(`datasets/${id}/objects/review/`, { method: 'POST', body: { ids: pending.map((o) => o.id), status: 'approved' } }), 'Labels checked'); P.project(); } }, 'Approve all ', arrow()); }
+    else if (!canTrain) { msg = [h('b', {}, 'Almost ready.'), h('span.m', {}, short.length ? ` Add ${short.map((c) => `${3 - (counts[c.name] || 0)} more ${niceItem(c.name)}s`).join(', ')} — or label one more sheet.` : ' Label at least 2 sheets.')]; act = h('a.btn.primary', { href: `/ka/markup/${firstToLabel.id}/` }, 'Keep labeling ', arrow()); }
+    else { msg = [h('b', {}, 'Ready to train.'), h('span.m', {}, ` ${fmt.n(st.approved)} checked labels on ${plural(sheets.filter((s) => s.objects).length, 'sheet')}.`)]; act = h('a.btn.primary', { href: `/ka/train/?dataset=${id}` }, 'Train model ', arrow()); }
+    const pct = Math.round((Math.min(st.approved, 60) / 60) * 100);
+    const ring = svgEl('svg', { class: 'ring', viewBox: '0 0 36 36' }, svgEl('circle', { cx: 18, cy: 18, r: 15, fill: 'none', stroke: 'rgba(236,238,233,.15)', 'stroke-width': 4 }),
+      svgEl('circle', { cx: 18, cy: 18, r: 15, fill: 'none', stroke: '#62d4dc', 'stroke-width': 4, 'stroke-dasharray': `${(canTrain ? 100 : pct) * 0.94} 100`, transform: 'rotate(-90 18 18)', 'stroke-linecap': 'round' }));
+    mount(
+      headx(d.name, null, [firstToLabel ? h('a.btn', { href: `/ka/markup/${firstToLabel.id}/` }, 'Label') : null, h(canTrain ? 'a.btn.primary' : 'a.btn', { href: canTrain ? `/ka/train/?dataset=${id}` : '#' }, 'Train model')]),
+      h('div.chips', { style: { marginTop: '-16px' } }, chips, cv.length > used.length && used.length ? h('span.chip', { title: cv.filter((c) => !counts[c.name]).map((c) => c.name).join(', ') }, `+${cv.length - used.length} more types`) : null),
+      h('div.grid.g4', {}, sheetCards, dropCard(id)),
+      h('div.readybar', {}, ring, h('div', {}, msg), h('div.right', {}, act)));
+  };
+
+  // ================================================================== Train (one decision, cost up front)
   P.train = async () => {
     const qs = new URLSearchParams(location.search);
     const ds = await api('datasets/');
     let pick = qs.get('dataset') || (ds[0] && String(ds[0].id));
-    let goal = 'outlines', speed = 'cpu-local';
-    setTop([['Models', '/ka/models/'], 'Train a model']);
-    const area = h('div.grid', { style: { gap: '20px' } });
-    const opt = (on, onclick, t, s) => h('div.choice' + (on ? '.on' : ''), { onclick }, h('span.radio'), h('div', {}, h('b', {}, t), h('span', {}, s)));
-    const render = () => {
+    let goal = 'outlines', speed = 'cpu-local', est = null;
+    setTop([['Models', '/ka/models/'], 'Train']);
+    const root = h('div.narrow');
+    const ill = (kind) => svgEl('svg', { viewBox: '0 0 48 34' }, kind === 'outlines'
+      ? [svgEl('rect', { x: 4, y: 4, width: 40, height: 26, fill: 'none', stroke: '#2b373c' }), svgEl('rect', { x: 8, y: 8, width: 14, height: 18, fill: 'rgba(98,212,220,.2)', stroke: '#62d4dc' }), svgEl('rect', { x: 26, y: 14, width: 10, height: 8, fill: 'rgba(240,178,74,.25)', stroke: '#f0b24a' })]
+      : [svgEl('path', { d: 'M6 28V6h36v22M6 17h16M22 6v22', fill: 'none', stroke: '#62d4dc', 'stroke-width': 1.5 }), svgEl('circle', { cx: 22, cy: 17, r: 2, fill: '#f0b24a' }), svgEl('circle', { cx: 6, cy: 17, r: 2, fill: '#f0b24a' })]);
+    const render = async () => {
       const d = ds.find((x) => String(x.id) === String(pick));
-      area.replaceChildren(
-        h('div.grid.g3.eq', {},
-          h('div.card', {}, h('div.key', { style: { marginBottom: '12px' } }, '01 · Plans to learn from'), h('div.grid', { style: { gap: '10px' } }, ds.map((x) => opt(String(x.id) === String(pick), () => { pick = String(x.id); render(); }, x.name, `${x.sheets} sheets · ${fmt.n(x.approved)} checked labels`)))),
-          h('div.card', {}, h('div.key', { style: { marginBottom: '12px' } }, '02 · What it should do'), h('div.grid', { style: { gap: '10px' } },
-            opt(goal === 'outlines', () => { goal = 'outlines'; render(); }, 'Outline items on any plan', 'Vector PDFs and scans'),
-            opt(goal === 'structure', () => { goal = 'structure'; render(); }, 'Read the drawing line by line', 'Vector PDFs and CAD'))),
-          h('div.card', {}, h('div.key', { style: { marginBottom: '12px' } }, '03 · Speed'), h('div.grid', { style: { gap: '10px' } },
-            opt(speed === 'cpu-local', () => { speed = 'cpu-local'; render(); }, 'Standard', 'Included · minutes to hours'),
-            opt(speed === 'nvidia-t4', () => { speed = 'nvidia-t4'; render(); }, 'Fast', 'Cloud GPU · by the minute'),
-            opt(speed === 'nvidia-a10g', () => { speed = 'nvidia-a10g'; render(); }, 'Fastest', 'Large GPU · big datasets')))),
-        h('div.banner', {}, h('div', {}, h('b', {}, d ? d.name : 'Pick a dataset'), h('span.muted', {}, ` · ${goal === 'outlines' ? 'Outline items' : 'Line by line'} · ${speed === 'cpu-local' ? 'Standard' : speed === 'nvidia-t4' ? 'Fast' : 'Fastest'}`)),
-          h('span.muted.right', {}, 'Nothing runs or gets charged until you approve.'), h('button.btn.primary', { disabled: !d, onclick: () => start(d) }, 'Check & see cost ', arrow())));
+      if (!est || est._k !== `${pick}:${goal}`) { try { est = await api(`datasets/${pick}/estimate/?goal=${goal}`); est._k = `${pick}:${goal}`; } catch (e) { est = null; } }
+      const e = est?.[speed];
+      const free = e && Number(e.customer_cost_high) === 0;
+      const sel = h('select', { style: { width: 'auto', height: '30px', display: 'inline-block', marginLeft: '6px' }, onchange: (ev) => { pick = ev.target.value; render(); } }, ds.map((x) => h('option', { value: x.id, selected: String(x.id) === String(pick) }, x.name)));
+      root.replaceChildren(
+        h('div', {}, h('h1.h1', {}, 'Train a model'), h('p.lede', {}, 'Training on', sel)),
+        h('div', {}, h('div.h3', { style: { marginBottom: '12px' } }, 'What should it find?'), h('div.grid', { style: { gap: '12px' } },
+          h('button.choice' + (goal === 'outlines' ? '.on' : ''), { onclick: () => { goal = 'outlines'; render(); } }, h('span.ill', {}, ill('outlines')), h('div', {}, h('b', {}, 'Outline walls, doors & windows'), h('span', {}, 'Works on vector PDFs and scans'))),
+          h('button.choice' + (goal === 'structure' ? '.on' : ''), { onclick: () => { goal = 'structure'; render(); } }, h('span.ill', {}, ill('structure')), h('div', {}, h('b', {}, 'Trace every line'), h('span', {}, 'Names each line on vector PDFs and CAD'))))),
+        h('div', {}, h('div.h3', { style: { marginBottom: '12px' } }, 'How fast?'), h('div.seg', {}, [['cpu-local', 'Standard'], ['nvidia-t4', 'Fast'], ['nvidia-a10g', 'Fastest']].map(([k, t]) => {
+          const x = est?.[k];
+          return h('button' + (speed === k ? '.on' : ''), { onclick: () => { speed = k; render(); } }, h('b', {}, t), h('small', {}, x ? `${Number(x.customer_cost_high) === 0 ? 'Included' : '~' + fmt.usd((Number(x.customer_cost_low) + Number(x.customer_cost_high)) / 2)} · ~${fmt.dur((x.seconds_low + x.seconds_high) / 2)}` : '…'));
+        }))),
+        h('div', {}, h('button.btn.primary.lg.w100', { disabled: !d || !e, onclick: () => start(d, e) }, e ? `Start training · ~${fmt.dur((e.seconds_low + e.seconds_high) / 2)} · ${free ? '$0' : 'up to ' + fmt.usd(e.max_charge_at_runtime_limit)}` : 'Start training'),
+          h('p.faint.small', { style: { textAlign: 'center', marginTop: '10px' } }, free ? 'Included in your plan. You can leave while it trains.' : 'Billed by the minute. You approve the maximum before it starts.')));
     };
-    async function start(d) {
+    async function start(d, e) {
+      if (Number(e.customer_cost_high) > 0 && !(await dialog('Approve the cost', h('p.muted', {}, `This run uses a cloud GPU. You will be charged for the time used, never more than ${fmt.usd(e.max_charge_at_runtime_limit)}.`), [{ label: `Approve up to ${fmt.usd(e.max_charge_at_runtime_limit)}`, primary: true }]))) return;
       const r = await guard(() => api(`datasets/${d.id}/train/`, { method: 'POST', body: { goal, gpu_type: speed } }));
-      if (!r.ready) {
-        const tips = [...(r.readiness.blockers || []).map((b) => b.message), ...(r.readiness.warnings || []).filter((w) => w.code === 'pending_review' || w.code === 'graphs_pending_review').map((w) => w.message)];
-        return dialog('Not quite ready', h('div.grid', { style: { gap: '10px' } }, h('div.muted', {}, goal === 'structure' ? 'Line-by-line models need at least 2 sheets labeled and approved in “Line by line”.' : 'The model needs at least 2 labeled sheets and 3 checked examples of each item.'),
-          tips.map((t) => h('div.notice', {}, t)), h('a.btn.primary', { href: `/ka/projects/${d.id}/` }, 'Open the dataset ', arrow())), []);
-      }
-      const j = r.job;
-      if (j.status === 'FAILED') return toast(j.error, 'danger');
-      const e = j.estimate;
-      const free = Number(e.customer_cost_high) === 0;
-      const confirm = h('input', { type: 'checkbox', checked: free });
-      const ok = await dialog('Ready to train', h('div.grid', { style: { gap: '16px' } },
-        h('div.tiles', { style: { gridTemplateColumns: '1fr 1fr' } }, tile('Time', `${fmt.dur(e.seconds_low)}–${fmt.dur(e.seconds_high)}`, 'estimate'), tile('Cost', free ? 'Included' : `${fmt.usd(e.customer_cost_low)}–${fmt.usd(e.customer_cost_high)}`, free ? 'standard servers' : `max ${fmt.usd(e.max_charge_at_runtime_limit)}`)),
-        j.init === 'checkpoint' ? h('div.notice.info', {}, 'It keeps learning from your last model instead of starting over.') : null,
-        e.pricing_is_placeholder && !free ? h('div.notice', {}, 'Prices shown are placeholders during setup.') : null,
-        free ? null : h('label.row', { style: { gap: '10px' } }, confirm, h('span', {}, `I approve up to ${fmt.usd(e.max_charge_at_runtime_limit)}`))),
-      [{ label: 'Start training', primary: true }], 'Step 03 · Train');
-      if (!ok) return;
-      if (!confirm.checked) return toast('Tick the box to approve', 'warn');
-      await guard(() => api(`jobs/${j.id}/authorize/`, { method: 'POST', body: { confirm: true } }));
-      location.href = `/ka/runs/${j.id}/`;
+      if (!r.ready) return dialog('Not quite ready', h('div.grid', { style: { gap: '12px' } }, h('p.muted', { style: { margin: 0 } }, goal === 'structure' ? 'Line tracing needs at least 2 sheets labeled and approved line by line.' : 'The model needs at least 2 labeled sheets and 3 checked examples of each item.'), h('a.btn.primary', { href: `/ka/projects/${d.id}/` }, 'Open the plan set')), []);
+      if (r.job.status === 'FAILED') return toast(r.job.error, 'danger');
+      await guard(() => api(`jobs/${r.job.id}/authorize/`, { method: 'POST', body: { confirm: true } }));
+      location.href = `/ka/runs/${r.job.id}/`;
     }
-    mount(head('Step 03 · Train', 'Train a model', null, 'Pick the plans and the job. We show the time and cost before anything runs.'), ds.length ? area : empty('No datasets yet', 'Upload and label some plans first.', h('a.btn.primary', { href: '/ka/' }, 'Go to datasets')));
-    render();
+    mount(ds.length ? root : empty('No plan sets yet', 'Add and label some plans first.', h('a.btn.primary', { href: '/ka/' }, 'Add plans')));
+    if (ds.length) render();
   };
 
-  // ================================================================== Training run (progress + accuracy)
+  // ================================================================== Training run → accuracy
   P.run = async () => {
     const j = await api(`jobs/${PK}/`);
     const active = ACTIVE.includes(j.status) || j.status === 'VALIDATING';
-    const title = `${LABEL[j.task] || 'Model'} · run #${j.id}`;
-    setTop([['Models', '/ka/models/'], title]);
-    const hist = j.metrics_history.filter((m) => m.epoch);
-    const total = j.config?.epochs || 1;
-    const ep = hist.length ? hist[hist.length - 1].epoch : 0;
+    const name = `${LABEL[j.task] || 'Model'} · run ${j.id}`;
+    setTop([['Models', '/ka/models/'], name]);
     if (active) {
-      const stage = { QUEUED: 'Waiting for a free server', PROVISIONING: 'Starting a server', PREPARING: 'Reading your plans and labels', TRAINING: `Studying your examples — pass ${ep} of ${total}`, EVALUATING: 'Testing on plans it has never seen', SAVING: 'Saving your model' }[j.status] || 'Working…';
-      const pct = j.status === 'TRAINING' ? Math.max(6, (ep / total) * 86) : { QUEUED: 2, PROVISIONING: 3, PREPARING: 5, EVALUATING: 92, SAVING: 97 }[j.status] || 1;
-      const steps = ['Get ready', 'Learn', 'Test', 'Save'];
-      const si = { QUEUED: 0, PROVISIONING: 0, PREPARING: 0, VALIDATING: 0, TRAINING: 1, EVALUATING: 2, SAVING: 3 }[j.status];
-      mount(head('Step 03 · Training', title, null, `Started ${fmt.ago(j.started_at || j.created_at)} · you can leave this page — training keeps going.`,
-        [h('button.btn.danger', { onclick: async () => { if (await dialog('Stop training?', h('div.muted', {}, 'You only pay for the time used so far.'), [{ label: 'Stop', danger: true }])) { await guard(() => api(`jobs/${j.id}/cancel/`, { method: 'POST', body: {} })); P.run(); } } }, 'Stop')]),
-      h('div.card', { style: { padding: '28px' } }, h('div.card-h', {}, h('div.h3', {}, stage), jobChip(j.status)), h('div.progress-big', { style: { margin: '6px 0 20px' } }, h('i', { style: { width: pct + '%' } })),
-        h('div.steps', {}, steps.map((s, i) => h('div.step' + (i < si ? '.done' : i === si ? '.on' : ''), {}, h('b', {}, String(i + 1).padStart(2, '0')), s)))));
+      const hist = j.metrics_history.filter((m) => m.epoch);
+      const total = j.config?.epochs || 1, ep = hist.length ? hist[hist.length - 1].epoch : 0;
+      const stage = { QUEUED: 'Waiting for a server', PROVISIONING: 'Starting a server', PREPARING: 'Reading your plans and labels', TRAINING: 'Studying your examples', EVALUATING: 'Testing on plans it has never seen', SAVING: 'Saving your model' }[j.status] || 'Getting ready';
+      const pct = j.status === 'TRAINING' ? Math.max(6, (ep / total) * 86) : { EVALUATING: 92, SAVING: 97 }[j.status] || 3;
+      const left = j.started_at && pct > 8 ? ((Date.now() - new Date(j.started_at)) / 1000) * (100 / pct - 1) : null;
+      mount(h('section.hero', {}, h('div.hero-copy', {}, h('div.kicker', {}, 'Training'), h('h1.h1', { style: { marginTop: '6px' } }, stage),
+        h('p.lede', {}, left ? `About ${fmt.dur(left)} left. You can leave — it keeps going.` : 'You can leave — it keeps going.'), h('div.progress-big', { style: { marginTop: '22px' } }, h('i', { style: { width: pct + '%' } })),
+        h('div.actions', {}, h('button.btn.ghost', { onclick: async () => { if (await dialog('Stop training?', h('p.muted', {}, 'You only pay for the time used so far.'), [{ label: 'Stop', danger: true }])) { await guard(() => api(`jobs/${j.id}/cancel/`, { method: 'POST', body: {} })); P.run(); } } }, 'Stop'))),
+      darkDrawing(null, [], `Run ${j.id} · ${ep}/${total}`)));
       setTimeout(() => { if (document.body.dataset.page === 'run') P.run(); }, 2500);
       return;
     }
     if (j.status !== 'COMPLETED') {
-      const why = j.status === 'CREATED' ? 'This run is waiting for your approval.' : (j.error || '').split('\n')[0];
-      mount(head('Training', title), h('div.card', {}, empty(STATUS[j.status][0], why, h('div.row', {}, h('a.btn.primary', { href: `/ka/train/?dataset=${j.dataset_id}` }, 'Try again'), h('a.btn', { href: `/ka/projects/${j.dataset_id}/` }, 'Open dataset')), false)), techDetails(j));
+      mount(headx(name), h('div.card', {}, empty(STATUS[j.status][0], j.status === 'CREATED' ? 'This run is waiting for your approval.' : (j.error || '').split('\n')[0], h('a.btn.primary', { href: `/ka/train/?dataset=${j.dataset_id}` }, 'Try again'), false)), techDetails(j));
       return;
     }
-    const rc = j.report;
-    const tone = { great: '', good: '', fair: '.warn', weak: '.danger' };
-    const deployBtn = j.model_version && rc?.ready_to_use ? h('button.btn.primary', { onclick: () => deployDialog(j.model_version, `${LABEL[j.task]} model`) }, 'Deploy ', arrow()) : null;
+    const rc = j.report || { items: [], sentence: '' };
+    const items = rc.items.filter((i) => !/unrelated|other/.test(i.name)).slice(0, 3);
+    const deploy = j.model_version && rc.ready_to_use ? h('button.btn.primary.lg', { onclick: () => deployDialog(j.model_version, `${cap(items.map((i) => i.name).join(' & '))} model`) }, 'Put it to work ', arrow()) : null;
     mount(
-      head('Step 04 · Accuracy report', title, null, `Learned in ${fmt.dur(j.runtime_s)} · tested on ${rc?.checked_on || 'held-back plans'}.`,
-        [h('a.btn', { href: `/ka/projects/${j.dataset_id}/` }, 'Add more examples'), deployBtn]),
-      h('div.grid.g2.eq', {},
-        h('div.card.mcard', {},
-          h('div.row', { style: { gap: '14px', flexWrap: 'nowrap', marginBottom: '6px' } }, h('div.grade' + (rc && rc.grade.length > 1 ? '.dim' : ''), {}, rc ? rc.grade : '—'),
-            h('div', {}, h('div.h3', {}, rc && rc.ready_to_use ? 'Ready to put to work' : 'Needs more examples'), h('div.muted', { style: { fontSize: '14px' } }, rc ? rc.advice : ''))),
-          h('div.key', { style: { margin: '6px 0 4px' } }, 'How often it finds each item'),
-          (rc?.items || []).map((i) => h('div.bar-row', {}, h('span', {}, cap(i.name)), h('div.meter' + (tone[i.level] || ''), {}, h('i', { style: { width: Math.round(i.score * 100) + '%' } })), h('span.mono.muted', { style: { fontSize: '12.5px', textAlign: 'right' } }, `${Math.round(i.score * 10)}/10`))),
-          h('div.strip', {}, [['Learned in', fmt.dur(j.runtime_s)], ['Tested on', rc?.checked_on?.startsWith('plans') ? 'new buildings' : 'held-back plans'], ['Version', `run #${j.id}`]].map(([k, v]) => h('div', {}, h('div.key', {}, k), h('div', { style: { fontWeight: 600, marginTop: '4px' } }, v))))),
-        j.model_version ? h('div.card', {}, h('div.card-h', {}, h('div.h3', {}, 'On your plans'), h('span.muted', { style: { fontSize: '13px' } }, 'What it finds')), KA.predictionViewer(j.model_version, j.dataset_id)) : h('div')),
+      headx(rc.ready_to_use ? 'Ready to put to work.' : 'Not ready yet.', `${rc.sentence} Tested on plans it never saw while learning.`, [h('a.btn', { href: `/ka/projects/${j.dataset_id}/` }, 'Add examples'), deploy]),
+      j.model_version ? compareView(j) : null,
+      h('div.stats3', {}, items.map((i) => h('div.stat', {}, h('div', {}, h('span.big', {}, i.found ?? Math.round(i.score * 10)), h('span.of', {}, ` / ${i.total ?? 10}`)), h('div.what', {}, `${cap(i.name)} found`),
+        h('div.meter' + ({ fair: '.warn', weak: '.danger' }[i.level] || ''), {}, h('i', { style: { width: Math.round(i.score * 100) + '%' } }))))),
       techDetails(j));
   };
+  function compareView(j) {
+    const box = h('div.compare', {}, h('div.skeleton', { style: { position: 'absolute', inset: 0, opacity: .1 } }));
+    (async () => {
+      const sheets = await api(`datasets/${j.dataset_id}/sheets/`);
+      const order = (j.eval_sheets || []).map((id) => sheets.find((s) => s.id === id)).filter(Boolean).concat(sheets);
+      const show = async (s) => {
+        const [objs, pred] = await Promise.all([api(`datasets/${j.dataset_id}/objects/?sheet=${s.id}&status=approved`), api(`model-versions/${j.model_version}/predict/`, { method: 'POST', body: { sheet_id: s.id, allow_raster_inferred: true } })]);
+        const layer = (polys, cls) => h('div.layer' + cls, {}, svgEl('svg', { viewBox: `0 0 ${s.width} ${s.height}`, preserveAspectRatio: 'xMidYMid meet' },
+          svgEl('image', { href: s.image_url, x: 0, y: 0, width: s.width, height: s.height, style: 'filter:invert(1) hue-rotate(180deg) brightness(.9);opacity:.55' }),
+          polys.map((p, i) => svgEl('polygon', { class: 'pred', points: p.polygon.map((q) => q.join(',')).join(' '), fill: COLORS[p.label] || '#62d4dc', stroke: COLORS[p.label] || '#62d4dc', style: `animation-delay:${Math.min(i * 12, 700)}ms` }))));
+        const before = layer(objs.filter((o) => o.geometry.polygon).map((o) => ({ polygon: o.geometry.polygon, label: o.label })), '.before');
+        const after = layer(pred.predictions || [], '.after');
+        const handle = h('div.handle');
+        const sel = h('select', { onchange: (e) => show(order.find((x) => String(x.id) === e.target.value)) }, [...new Map(order.map((x) => [x.id, x])).values()].map((x) => h('option', { value: x.id, selected: x.id === s.id }, `${nice(x.name)}${(j.eval_sheets || []).includes(x.id) ? ' · never seen' : ''}`)));
+        box.replaceChildren(before, after, h('span.lab.l', {}, 'Your labels'), h('span.lab.r', {}, 'Model found'), handle, sel);
+        const move = (x) => { const r = box.getBoundingClientRect(); const f = Math.min(1, Math.max(0, (x - r.left) / r.width)); after.style.clipPath = `inset(0 0 0 ${f * 100}%)`; handle.style.left = f * 100 + '%'; };
+        let drag = false;
+        box.onmousedown = (e) => { drag = true; move(e.clientX); }; window.addEventListener('mouseup', () => (drag = false)); box.onmousemove = (e) => drag && move(e.clientX);
+        box.ontouchmove = (e) => move(e.touches[0].clientX);
+      };
+      if (order[0]) show(order[0]);
+    })().catch((e) => box.replaceChildren(h('div.notice.err', { style: { margin: '20px' } }, e.message)));
+    return box;
+  }
   function techDetails(j) {
     const fm = j.final_metrics || {};
     return h('details.tech', {}, h('summary', {}, 'Technical details'), h('div', {},
-      h('dl.kv', {}, [['Architecture', j.catalog_id], ['Starting point', j.init], ['Passes (epochs)', j.config?.epochs], ['Best pass', fm.best_epoch], ['Headline', JSON.stringify(fm.headline || {})], ['Code version', j.code_version], ['Seed', j.seed], ['Run', j.id]].map(([k, v]) => [h('dt', {}, k), h('dd.mono', {}, String(v ?? '—'))])),
-      h('pre.code', { style: { marginTop: '14px', maxHeight: '320px' } }, JSON.stringify({ config: j.config, test: fm.test, val: fm.val }, null, 1)),
-      j.error ? h('pre.code', { style: { marginTop: '10px', whiteSpace: 'pre-wrap' } }, j.error) : null));
+      h('dl.kv', {}, [['Architecture', j.catalog_id], ['Starting point', j.init], ['Passes (epochs)', j.config?.epochs], ['Best pass', fm.best_epoch], ['Headline', JSON.stringify(fm.headline || {})], ['Runtime', fmt.dur(j.runtime_s)], ['Code version', j.code_version], ['Seed', j.seed]].map(([k, v]) => [h('dt', {}, k), h('dd.mono', {}, String(v ?? '—'))])),
+      h('pre.code', { style: { marginTop: '14px', maxHeight: '300px' } }, JSON.stringify({ config: j.config, test: fm.test, val: fm.val }, null, 1))));
   }
-
-  KA.predictionViewer = function (mvId, datasetId) {
-    const wrap = h('div', {});
-    const COL = { wall: '#1c9aa5', door: '#e39a1d', window: '#5b7cff', room: '#4f9f6b', room_tag: '#4f9f6b', other: '#848e8b' };
-    const view = h('div.pv', {}, h('div.skeleton', { style: { height: '300px' } }));
-    const legend = h('div.row', { style: { marginTop: '10px', gap: '8px' } });
-    const go = async (s) => {
-      view.replaceChildren(h('div.skeleton', { style: { height: '300px' } }));
-      try {
-        const r = await api(`model-versions/${mvId}/predict/`, { method: 'POST', body: { sheet_id: s.id, allow_raster_inferred: true } });
-        const svg = svgEl('svg', { viewBox: `0 0 ${s.width} ${s.height}`, preserveAspectRatio: 'xMidYMid meet', style: { width: '100%', height: '320px', background: '#fff', borderRadius: '10px', display: 'block', border: '1px solid var(--rule)' } }, svgEl('image', { href: s.image_url, x: 0, y: 0, width: s.width, height: s.height }));
-        (r.predictions || []).forEach((p) => svg.appendChild(svgEl('polygon', { class: 'overlay-poly', points: p.polygon.map((q) => q.join(',')).join(' '), fill: COL[p.label] || '#c3a6ff', stroke: COL[p.label] || '#c3a6ff' })));
-        (r.nodes || []).forEach((n) => { if (!n.bbox || n.label === 'other') return; const [x0, y0, x1, y1] = n.bbox; svg.appendChild(svgEl('rect', { x: x0 - 1, y: y0 - 1, width: Math.max(2, x1 - x0 + 2), height: Math.max(2, y1 - y0 + 2), fill: 'none', stroke: COL[n.label] || '#c3a6ff', 'stroke-width': 2.2, 'vector-effect': 'non-scaling-stroke' })); });
-        const counts = {}; (r.predictions || r.nodes || []).forEach((p) => (counts[p.label] = (counts[p.label] || 0) + 1));
-        view.replaceChildren(svg);
-        legend.replaceChildren(...Object.entries(counts).filter(([k]) => k !== 'other').map(([k, v]) => h('span.chip', {}, h('span.swatch', { style: { background: COL[k] || '#c3a6ff' } }), `${v} ${cap(k).toLowerCase()}${v > 1 ? 's' : ''}`)));
-      } catch (e) { view.replaceChildren(h('div.notice.err', {}, e.message)); }
-    };
-    api(`datasets/${datasetId}/sheets/`).then((sheets) => {
-      const sel = h('select', { style: { width: 'auto', minHeight: '36px', marginBottom: '10px' }, onchange: (e) => go(sheets.find((s) => String(s.id) === e.target.value)) }, sheets.map((s) => h('option', { value: s.id }, nice(s.name))));
-      wrap.replaceChildren(sel, view, legend);
-      if (sheets[0]) go(sheets[0]);
-    });
-    wrap.append(view);
-    return wrap;
-  };
+  KA.predictionViewer = (mvId, datasetId) => compareView({ model_version: mvId, dataset_id: datasetId, eval_sheets: [] });
 
   async function deployDialog(mvId, name) {
     const n = h('input', { type: 'text', value: name });
-    const ok = await dialog('Deploy this model', h('div.grid', { style: { gap: '16px' } },
-      h('div.muted', {}, 'Your software sends a plan sheet to a private API endpoint and gets back everything the model finds. Only requests with your API key are accepted.'),
-      h('label.field', {}, h('span', {}, 'Name'), n)), [{ label: 'Deploy', primary: true }], 'Step 05 · Deploy');
+    const ok = await dialog('Put this model to work', h('div.grid', { style: { gap: '16px' } },
+      h('p.muted', { style: { margin: 0 } }, 'You get a private API endpoint. Your software sends a plan sheet and gets back every item with its outline. Only requests with your API key are accepted.'),
+      h('label.field', {}, h('span', {}, 'Name'), n)), [{ label: 'Deploy', primary: true }]);
     if (!ok) return;
-    await guard(() => api('deployments/', { method: 'POST', body: { model_version_id: mvId, name: n.value, confirm: true } }), 'Deployed — it is live');
-    location.href = '/ka/deployments/';
+    await guard(() => api('deployments/', { method: 'POST', body: { model_version_id: mvId, name: n.value, confirm: true } }));
+    location.href = '/ka/deployments/?new=1';
   }
 
-  // ================================================================== Models
+  // ================================================================== Models (best live + version table)
   P.models = async () => {
-    const [ms, jobs] = await Promise.all([api('models/'), api('jobs/')]);
+    const [ms, jobs, deps] = await Promise.all([api('models/'), api('jobs/'), api('deployments/')]);
     setTop(['Models']);
     const running = jobs.filter((j) => ACTIVE.includes(j.status));
-    const all = ms.flatMap((m) => m.versions.map((v) => ({ ...v, m })));
-    const versions = ms.map((m) => m.versions.map((v) => ({ ...v, m, count: m.versions.length })).sort((a, b) => (b.report?.score || 0) - (a.report?.score || 0) || b.version - a.version)[0]).filter(Boolean)
-      .sort((a, b) => (b.report?.score || 0) - (a.report?.score || 0));
-    const card = (v) => h('div.card.mcard', {},
-      h('div.card-h', {}, h('span.key', {}, `${LABEL[v.task] || v.task} · v${v.version}${v.count > 1 ? ` of ${v.count}` : ''}`), v.status === 'archived' ? chip('Archived') : v.report?.ready_to_use ? chip('Ready', 'pos') : chip('Needs work', 'warn')),
-      h('div.row', { style: { gap: '14px', flexWrap: 'nowrap' } }, h('div.grade' + (!v.report || v.report.grade.length > 1 ? '.dim' : ''), {}, v.report && v.report.grade.length === 1 ? v.report.grade : '–'),
-        h('div', { style: { minWidth: 0 } }, h('div.h3', { style: { whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' } }, v.m.name.replace(/-(seg|gnn|inst)-.*/, '')), h('div.muted', { style: { fontSize: '13px' } }, `Trained ${fmt.date(v.created_at)}`))),
-      h('div.mlist', {}, (v.report?.items || []).filter((i) => !/unrelated|other/.test(i.name)).slice(0, 3).map((i) => h('div.bar-row', {}, h('span', {}, cap(i.name)), h('div.meter' + ({ fair: '.warn', weak: '.danger' }[i.level] || ''), {}, h('i', { style: { width: Math.round(i.score * 100) + '%' } })), h('span.mono.muted', { style: { fontSize: '12px', textAlign: 'right' } }, `${Math.round(i.score * 10)}/10`)))),
-      h('div.mfoot', {}, h('a.btn.sm', { href: `/ka/runs/${v.training_job}/` }, 'Report'),
-        v.license.commercially_deployable && v.status === 'ready' ? h('button.btn.sm' + (v.report?.ready_to_use ? '.primary' : ''), { onclick: () => deployDialog(v.id, v.m.name.replace(/-(seg|gnn|inst)-.*/, '')) }, 'Deploy') : null,
-        v.downloadable ? h('button.btn.sm.ghost', { onclick: async () => { const r = await guard(() => api(`model-versions/${v.id}/download/`)); location.href = r.url; } }, 'Download') : null));
-    mount(head('Your models', 'Models', null, 'Every training run makes a new version. Deploy the one you like — roll back any time.', [h('a.btn.primary', { href: '/ka/train/' }, icon('spark', 16), 'Train a model')]),
-      running.length ? h('div.list', {}, running.map((j) => h('a.item.click', { href: `/ka/runs/${j.id}/`, style: { textDecoration: 'none', color: 'inherit' } }, h('span.avatar', {}, icon('spark', 18)), h('div', {}, h('div.t', {}, `${LABEL[j.task] || 'Model'} · run #${j.id}`), h('div.s', {}, `Started ${fmt.ago(j.created_at)}`)), jobChip(j.status)))) : null,
-      versions.length ? h('div.grid.eq.' + ({ 1: 'g3', 2: 'g2', 4: 'g2' }[versions.length] || 'g3'), {}, versions.map(card)) : (running.length ? null : h('div.card', {}, empty('No models yet', 'Label a few plans, then train your first model. It takes one click.', h('a.btn.primary', { href: '/ka/' }, 'Go to datasets'), false))),
-      jobs.length ? h('details.tech', {}, h('summary', {}, `All training runs · ${jobs.length}`), h('div', {}, h('table.table', {}, h('thead', {}, h('tr', {}, ['Run', 'Status', 'Accuracy', 'Time', 'Started'].map((x) => h('th', {}, x)))),
-        h('tbody', {}, jobs.map((j) => h('tr', {}, h('td', {}, h('a', { href: `/ka/runs/${j.id}/` }, `${LABEL[j.task] || 'Model'} · run #${j.id}`)), h('td', {}, jobChip(j.status)), h('td', {}, j.report ? j.report.grade : '—'), h('td.n', {}, fmt.dur(j.runtime_s)), h('td', {}, fmt.ago(j.created_at)))))))) : null);
+    const all = ms.flatMap((m) => m.versions.map((v) => ({ ...v, m }))).filter((v) => v.report);
+    const best = [...all].sort((a, b) => b.report.score - a.report.score)[0];
+    const liveFor = (v) => deps.find((d) => d.active_version === v.id && d.status === 'active');
+    const finds = (v) => v.report.items.filter((i) => !/unrelated|other/.test(i.name)).map((i) => i.name);
+    const jobName = (v) => cap(finds(v).slice(0, 2).join(' & '));
+    const hero = best ? h('section.hero', {}, h('div.hero-copy', {}, h('div.row', { style: { gap: '8px' } }, liveFor(best) ? h('span.chip.pos', {}, h('span.dot'), 'Live') : h('span.chip.cyan', {}, h('span.dot'), 'Best version'), h('span.faint.small', {}, `${LABEL[best.task]} · v${best.version}`)),
+      h('h1.h1', { style: { marginTop: '10px' } }, jobName(best)), h('p.lede', {}, best.m.name.replace(/-(seg|gnn|inst)-.*/, '')),
+      h('div.grid.g3', { style: { gap: '12px', marginTop: '18px' } }, best.report.items.filter((i) => !/unrelated|other/.test(i.name)).slice(0, 3).map((i) => h('div', {}, h('div', {}, h('span.mono', { style: { fontSize: '24px', fontWeight: 500 } }, i.found ?? Math.round(i.score * 10)), h('span.faint.mono', {}, ` / ${i.total ?? 10}`)), h('div.faint.small', {}, `${i.name} found`)))),
+      h('div.actions', {}, liveFor(best) ? h('a.btn.lg', { href: '/ka/deployments/' }, 'Live since ' + fmt.date(liveFor(best).created_at)) : h('button.btn.primary.lg', { onclick: () => deployDialog(best.id, `${jobName(best)} model`) }, 'Put it to work ', arrow()), h('a.btn.ghost', { href: `/ka/runs/${best.training_job}/` }, 'Accuracy'))),
+    darkDrawing(null, [], `Model v${best.version}`)) : null;
+    if (best) api(`datasets/${best.dataset_id}/sheets/`).then(async (ss) => { const s = ss[0]; const r = await api(`model-versions/${best.id}/predict/`, { method: 'POST', body: { sheet_id: s.id } }); hero.lastChild.replaceWith(darkDrawing(s, r.predictions || [], `${nice(s.name)} · v${best.version}`)); }).catch(() => {});
+    const rows = [...all].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+    mount(headx('Models', null, [h('a.btn.primary', { href: '/ka/train/' }, 'Train a model')]),
+      running.length ? h('div.list', {}, running.map((j) => h('a.item.click', { href: `/ka/runs/${j.id}/`, style: { textDecoration: 'none', color: 'inherit' } }, h('span.livedot'), h('div', {}, h('div.t', {}, `${LABEL[j.task]} · training`), h('div.s', {}, `Started ${fmt.ago(j.created_at)}`)), jobChip(j.status)))) : null,
+      hero || h('div.card', {}, empty('No models yet', 'Label a few plans, then train your first model.', h('a.btn.primary', { href: '/ka/' }, 'Go to plan sets'), false)),
+      rows.length ? h('div', {}, h('div.section-h', { style: { marginBottom: '12px' } }, h('div.h2', {}, 'All versions'), h('span.faint', {}, plural(rows.length, 'version'))),
+        h('div.tablewrap', {}, h('table.table', {}, h('thead', {}, h('tr', {}, ['Model', 'Finds', 'Found', 'Trained', ''].map((x) => h('th', {}, x)))),
+          h('tbody', {}, rows.map((v) => h('tr', {}, h('td', {}, h('div', { style: { fontWeight: 600 } }, `${jobName(v)} · v${v.version}`), h('div.faint.small', {}, LABEL[v.task])),
+            h('td', {}, finds(v).slice(0, 3).join(', ')),
+            h('td', { style: { width: '220px' } }, h('div.row', { style: { gap: '10px', flexWrap: 'nowrap' } }, h('div.meter' + (v.report.ready_to_use ? '' : '.warn'), { style: { flex: 1 } }, h('i', { style: { width: Math.round(v.report.score * 100) + '%' } })), h('span.mono.small', {}, `${Math.round(v.report.score * 100)}%`))),
+            h('td.faint', { style: { whiteSpace: 'nowrap' } }, fmt.date(v.created_at)),
+            h('td', { style: { textAlign: 'right', whiteSpace: 'nowrap' } }, liveFor(v) ? h('span.chip.pos', {}, h('span.dot'), 'Live') : null, h('a.btn.sm.ghost', { href: `/ka/runs/${v.training_job}/` }, 'Report'),
+              v.license.commercially_deployable && v.status === 'ready' && !liveFor(v) ? h('button.btn.sm' + (v.report.ready_to_use ? '' : '.ghost'), { onclick: () => deployDialog(v.id, `${jobName(v)} model`) }, 'Deploy') : null))))))) : null);
   };
 
-  // ================================================================== Deployments
+  // ================================================================== Deployments (live panel + try it)
   P.deployments = async () => {
     const [deps, ms] = await Promise.all([api('deployments/'), api('models/')]);
-    setTop(['Deployments'], [h('a.btn', { href: '/ka/api-keys/' }, icon('key', 16), 'API keys')]);
+    setTop(['Deployments']);
+    const active = deps.filter((d) => d.status !== 'deleted');
     const curl = (d) => `curl -X POST ${location.origin}${d.endpoint} \\\n  -H "Authorization: Bearer $KA_API_KEY" \\\n  -H "Content-Type: application/json" \\\n  -d '{"image": "<base64 PNG of a plan sheet>"}'`;
-    mount(head('Step 05 · Deploy', 'Send a drawing. ', 'Get back everything on it.', 'Each deployment is a private API endpoint for one of your models. Your software sends a plan sheet; it returns walls, doors, windows and rooms with their exact positions.'),
-      deps.length ? deps.map((d) => {
-        const versions = (ms.find((m) => m.id === d.model_id)?.versions || []).filter((v) => v.license.commercially_deployable && v.status === 'ready');
-        const act = async (a, body) => { await guard(() => api(`deployments/${d.id}/${a}/`, { method: 'POST', body: body || {} }), 'Updated'); P.deployments(); };
-        return sheetFrame([h('div.row', {}, h('div.h2', {}, d.name), d.status === 'active' ? chip('Live', 'pos', true) : chip('Paused', 'warn')),
-          h('div.tiles', { style: { marginTop: '18px' } }, tile('Requests', fmt.n(d.request_count), d.last_request_at ? `last ${fmt.ago(d.last_request_at)}` : 'none yet'), tile('Errors', fmt.n(d.error_count), 'rejected requests'), tile('Version', `v${d.active_version_number}`, 'serving now'), tile('Limit', `${d.rate_limit_per_minute}/min`, 'requests')),
-          h('div.key', { style: { marginTop: '22px' } }, 'API endpoint'), h('pre.code', { style: { marginTop: '8px' } }, `POST ${location.origin}${d.endpoint}`),
-          h('details.tech', { style: { marginTop: '14px' } }, h('summary', {}, 'Example request'), h('div', {}, h('pre.code', {}, curl(d)))),
-          h('div.row', { style: { marginTop: '18px' } },
-            versions.length > 1 ? h('select', { style: { width: 'auto' }, onchange: (e) => act('set-version', { model_version_id: Number(e.target.value) }) }, versions.map((v) => h('option', { value: v.id, selected: v.id === d.active_version }, `Serve v${v.version}`))) : null,
-            d.history.length > 1 ? h('button.btn.sm', { onclick: () => act('rollback') }, 'Roll back') : null,
-            h('button.btn.sm', { onclick: () => act(d.status === 'active' ? 'pause' : 'resume') }, d.status === 'active' ? 'Pause' : 'Resume'),
-            h('button.btn.sm.danger', { onclick: async () => { if (await dialog('Delete this deployment?', h('div.muted', {}, 'The endpoint stops answering right away. The model itself is kept.'), [{ label: 'Delete', danger: true }])) act('delete'); } }, 'Delete'))],
-        { rows: [['Model', LABEL[d.task] || d.task], ['Created', fmt.date(d.created_at)]], no: `KA-5${String(d.id).padStart(2, '0')}` });
-      }) : empty('Nothing deployed yet', 'Train a model, check its accuracy, then deploy it from the accuracy report.', h('a.btn.primary', { href: '/ka/models/' }, 'See your models ', arrow())));
+    const card = (d) => {
+      const versions = (ms.find((m) => m.id === d.model_id)?.versions || []).filter((v) => v.license.commercially_deployable && v.status === 'ready');
+      const act = async (a, body) => { await guard(() => api(`deployments/${d.id}/${a}/`, { method: 'POST', body: body || {} }), 'Updated'); P.deployments(); };
+      const input = h('input', { type: 'file', accept: '.png,.jpg,.jpeg', style: { display: 'none' } });
+      const out = h('div');
+      const drop = h('div.trydrop', { onclick: () => input.click() }, h('b', { style: { color: '#eceee9' } }, 'Try it: drop a plan image here'), h('div.small', {}, 'PNG or JPG · runs against v' + d.active_version_number), input);
+      const run = async (f) => {
+        drop.classList.add('over'); out.replaceChildren(h('div.small.muted', {}, 'Reading…'));
+        const b64 = await new Promise((res) => { const r = new FileReader(); r.onload = () => res(String(r.result).split(',')[1]); r.readAsDataURL(f); });
+        try {
+          const r = await api(`model-versions/${d.active_version}/predict/`, { method: 'POST', body: { image: b64 } });
+          const c = {}; (r.predictions || []).forEach((p) => (c[p.label] = (c[p.label] || 0) + 1));
+          const url = URL.createObjectURL(f);
+          const [W, H] = r.image_size;
+          const svg = svgEl('svg', { viewBox: `0 0 ${W} ${H}`, style: { width: '100%', maxHeight: '320px', marginTop: '12px', borderRadius: '8px', background: '#fff' } }, svgEl('image', { href: url, x: 0, y: 0, width: W, height: H }),
+            (r.predictions || []).map((p) => svgEl('polygon', { class: 'overlay-poly', points: p.polygon.map((q) => q.join(',')).join(' '), fill: COLORS[p.label] || '#62d4dc', stroke: COLORS[p.label] || '#62d4dc' })));
+          out.replaceChildren(h('div.row', { style: { marginTop: '12px' } }, Object.entries(c).map(([k, v]) => h('span.chip', {}, h('span.swatch', { style: { background: COLORS[k] || '#62d4dc' } }), `${v} ${niceItem(k)}${v > 1 ? 's' : ''}`))), svg);
+        } catch (e) { out.replaceChildren(h('div.notice.err', {}, e.message)); }
+        drop.classList.remove('over');
+      };
+      input.onchange = () => input.files[0] && run(input.files[0]);
+      drop.ondragover = (e) => { e.preventDefault(); drop.classList.add('over'); }; drop.ondragleave = () => drop.classList.remove('over');
+      drop.ondrop = (e) => { e.preventDefault(); e.dataTransfer.files[0] && run(e.dataTransfer.files[0]); };
+      return h('section.live', {}, h('span.tri'),
+        h('div.row', {}, d.status === 'active' ? h('span.row', { style: { gap: '8px' } }, h('span.livedot'), h('span.small', { style: { color: 'var(--cyan)', fontWeight: 600 } }, 'Live')) : h('span.chip.warn', {}, 'Paused'), h('span.muted.small', {}, `${LABEL[d.task]} · v${d.active_version_number} · ${fmt.n(d.request_count)} requests`)),
+        h('div.display', { style: { marginTop: '12px' } }, d.status === 'active' ? h('span', {}, d.name, h('span.c', {}, ' is live.')) : `${d.name} is paused.`),
+        h('div.grid.g2', { style: { marginTop: '24px', alignItems: 'start' } },
+          h('div', {}, h('div.small.muted', { style: { marginBottom: '8px' } }, 'Endpoint'), h('pre.code', {}, `POST ${location.origin}${d.endpoint}`),
+            h('div.row', { style: { marginTop: '14px' } }, h('button.btn.primary', { onclick: () => { navigator.clipboard?.writeText(curl(d)); toast('Example request copied', 'pos'); } }, 'Copy example request'), h('a.btn', { href: '/ka/api-keys/' }, 'API keys'),
+              versions.length > 1 ? h('select', { style: { width: 'auto', height: '36px', background: 'transparent', color: '#eceee9', borderColor: 'rgba(236,238,233,.25)' }, onchange: (e) => act('set-version', { model_version_id: Number(e.target.value) }) }, versions.map((v) => h('option', { value: v.id, selected: v.id === d.active_version }, `v${v.version}`))) : null),
+            h('div.row', { style: { marginTop: '10px' } }, d.history.length > 1 ? h('button.btn.sm', { onclick: () => act('rollback') }, 'Roll back') : null, h('button.btn.sm', { onclick: () => act(d.status === 'active' ? 'pause' : 'resume') }, d.status === 'active' ? 'Pause' : 'Resume'),
+              h('button.btn.sm', { onclick: async () => { if (await dialog('Delete this deployment?', h('p.muted', {}, 'The endpoint stops answering right away. The model is kept.'), [{ label: 'Delete', danger: true }])) act('delete'); } }, 'Delete'))),
+          h('div', {}, drop, out)));
+    };
+    mount(headx('Deployments', active.length ? null : 'A deployment turns a model into a private API your software can call.'), active.length ? active.map(card) : h('div.card', {}, empty('Nothing deployed yet', 'Open a model and choose “Put it to work”.', h('a.btn.primary', { href: '/ka/models/' }, 'See models'), false)));
   };
 
   // ================================================================== API keys

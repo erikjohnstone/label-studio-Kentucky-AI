@@ -89,7 +89,8 @@ def _ser_job(j: TrainingJob, full=False):
          'model_version': j.model_versions.values_list('id', flat=True).first(),
          'report': TA.report_card(j.final_metrics, j.task) if j.status == 'COMPLETED' else None}
     if full:
-        d.update({'config': j.config, 'seed': j.seed, 'code_version': j.code_version, 'status_history': j.status_history,
+        sp = j.dataset_version.splits
+        d.update({'eval_sheets': (sp.get('test') or []) + (sp.get('val') or []), 'config': j.config, 'seed': j.seed, 'code_version': j.code_version, 'status_history': j.status_history,
                   'metrics_history': j.metrics_history, 'final_metrics': j.final_metrics, 'resource_usage': j.resource_usage,
                   'provider_job_id': j.provider_job_id})
     return d
@@ -902,3 +903,15 @@ def dataset_train(request, pk):
                         request.data.get('name') or f'{d.name} — {"plan outlines" if goal["task"] == "semantic_segmentation" else "plan structure"}')
     audit(request, 'training.create', j, status=j.status, goal=request.data.get('goal'))
     return Response({'ready': True, 'job': _ser_job(j, full=True)}, status=201)
+
+
+@api_view(['GET'])
+def dataset_estimate(request, pk):
+    """Up-front time/cost for the Train screen (before any job exists)."""
+    from .training.config import recommended
+
+    d = _get(Dataset, request, pk=pk)
+    goal = GOALS.get(request.GET.get('goal', 'outlines'), GOALS['outlines'])
+    n = max(1, round(d.sheets.count() * 0.7))
+    cfg = recommended(goal['catalog_id'], {'train_items': n})
+    return Response({g: pricing.estimate_training(goal['catalog_id'], cfg, n, g) for g in ('cpu-local', 'nvidia-t4', 'nvidia-a10g')})

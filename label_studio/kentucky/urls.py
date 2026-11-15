@@ -73,3 +73,4 @@ urlpatterns += [
     path('ka/engine/<path:path>', views.engine_asset, name='engine-asset'),
 ]
 urlpatterns += [path(A + 'datasets/<int:pk>/train/', api.dataset_train)]
+urlpatterns += [path(A + 'datasets/<int:pk>/estimate/', api.dataset_estimate)]

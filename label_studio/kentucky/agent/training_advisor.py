@@ -134,14 +134,16 @@ def report_card(final_metrics: dict, task: str) -> dict | None:
             if c == '__background__' or not v.get('gt_pixels'):
                 continue
             found = (1 - objs[c]['missing_rate']) if c in objs else (v.get('recall') or 0)
-            items.append({'key': c, 'score': found, 'outline': v.get('iou')})
+            tot = objs[c]['gt_count'] if c in objs else None
+            items.append({'key': c, 'score': found, 'outline': v.get('iou'), 'total': tot, 'found': round(found * tot) if tot else None})
     elif task == 'instance_segmentation':
         for c, v in (sp.get('per_class_pr') or {}).items():
-            items.append({'key': c, 'score': v.get('recall') or 0, 'outline': (sp.get('per_class_ap') or {}).get(c)})
+            tot = (v.get('tp') or 0) + (v.get('fn') or 0)
+            items.append({'key': c, 'score': v.get('recall') or 0, 'outline': (sp.get('per_class_ap') or {}).get(c), 'total': tot, 'found': v.get('tp')})
     else:
         for c, v in (sp.get('per_class') or {}).items():
             if v.get('support'):
-                items.append({'key': c, 'score': v.get('recall') or 0, 'outline': v.get('f1')})
+                items.append({'key': c, 'score': v.get('recall') or 0, 'outline': v.get('f1'), 'total': v['support'], 'found': round((v.get('recall') or 0) * v['support'])})
     if not items:
         return None
     for i in items:
@@ -154,6 +156,8 @@ def report_card(final_metrics: dict, task: str) -> dict | None:
     weak = [i['name'] for i in sorted(items, key=lambda x: x['score']) if i['level'] in ('weak', 'fair')]
     advice = (f'Label more {" and ".join(weak[:2])} on a few more plans, then train again.' if weak
               else 'Looks solid. Try it on a plan it has never seen before turning it on.')
-    return {'grade': grade, 'score': round(mean, 3), 'items': sorted(items, key=lambda x: -x['score']), 'advice': advice,
+    weakest = min(items, key=lambda x: x['score'])
+    sentence = ('Ready to use.' if mean >= 0.75 else 'Not ready yet.') + (f' Misses some {weakest["name"]} now and then.' if weakest['score'] < 0.95 else ' Finds nearly everything it was tested on.')
+    return {'grade': grade, 'score': round(mean, 3), 'sentence': sentence, 'items': sorted(items, key=lambda x: -x['score']), 'advice': advice,
             'checked_on': 'plans it never saw while learning' if split_name == 'test' else 'a held-back check set',
             'ready_to_use': mean >= 0.75}
