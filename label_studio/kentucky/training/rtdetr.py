@@ -25,7 +25,8 @@ SPECS = {
     # RF-DETR: DINOv2 backbone (windowed attention) + LW-DETR decoder; expects ImageNet-normalised input
     'det-rfdetr-s': {'hf_id': 'Roboflow/rf-detr-small', 'revision': '3bdc465063270f99769da5a1b4c00c68bd2d439d',
                      'config': 'rf_detr_small.json', 'cls': ('RfDetrConfig', 'RfDetrForObjectDetection'),
-                     'mean': (0.485, 0.456, 0.406), 'std': (0.229, 0.224, 0.225)},
+                     'mean': (0.485, 0.456, 0.406), 'std': (0.229, 0.224, 0.225),
+                     'backbone_lr_mult': 0.15},  # RF-DETR recipe: encoder at ~0.15x the decoder LR (full LR wrecked it here)
 }
 HF_ID, HF_REVISION = SPECS['det-rtdetrv2-r18']['hf_id'], SPECS['det-rtdetrv2-r18']['revision']
 MAX_DETECTIONS = 200
@@ -61,6 +62,15 @@ class RTDetrAdapter(nn.Module):
         else:
             self.net = model_cls(_config(k, key))
         self.key = key
+
+    def param_groups(self, lr):
+        mult = SPECS[self.key].get('backbone_lr_mult')
+        params = [(n, p) for n, p in self.named_parameters() if p.requires_grad]
+        if not mult:
+            return [{'params': [p for _, p in params], 'lr': lr}]
+        bb = [p for n, p in params if '.backbone.' in n]
+        rest = [p for n, p in params if '.backbone.' not in n]
+        return [{'params': bb, 'lr': lr * mult}, {'params': rest, 'lr': lr}]
 
     def _batch(self, images):
         # shared transform gives [-1, 1]; RT-DETR expects [0, 1] (rescale only, no normalisation); pad to /32 with white

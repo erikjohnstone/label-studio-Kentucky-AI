@@ -638,7 +638,9 @@ def train_instance(spec, reporter, deadline):
     if spec.get('base_checkpoint'):
         ck = torch.load(spec['base_checkpoint'], map_location='cpu', weights_only=False)
         _load_compatible(model, ck['state_dict'], reporter)
-    opt = make_optimizer([p for p in model.parameters() if p.requires_grad], cfg)
+    opt = make_optimizer(model.param_groups(cfg['lr']) if hasattr(model, 'param_groups') else [p for p in model.parameters() if p.requires_grad], cfg)
+    for g in opt.param_groups:
+        g['base_lr'] = g['lr']
     sched = make_scheduler(opt, cfg)
     warmup = 50
     step = 0
@@ -675,9 +677,9 @@ def train_instance(spec, reporter, deadline):
             if not math.isfinite(float(loss)):
                 reporter.log('non-finite loss; skipping batch')
                 continue
-            if step < warmup:
+            if step < warmup:  # each group warms up to its own rate (backbone groups run lower)
                 for gparam in opt.param_groups:
-                    gparam['lr'] = cfg['lr'] * (step + 1) / warmup
+                    gparam['lr'] = gparam['base_lr'] * (step + 1) / warmup
             opt.zero_grad()
             loss.backward()
             torch.nn.utils.clip_grad_norm_(model.parameters(), 10.0)

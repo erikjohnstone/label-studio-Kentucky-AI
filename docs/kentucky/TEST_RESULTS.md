@@ -165,3 +165,24 @@ first and keeps it unless training beats it, at 0.3x the learning rate.
 **Transfer between plan types:** D-FINE-S fine-tuned on the scans from the model trained on vector plans reached
 mAP50 0.963 in 8 min, better and faster than starting from the public COCO weights (0.954, 13 min) — a model
 trained on one plan set is a good starting point for the next, even across scan/vector.
+
+
+## Research-driven changes (Nov 15, later) — all through the platform
+After a 7-track literature and license review (research/MODEL_REVIEW_2026-11.md):
+* **Lineup:** recommended defaults (DINOv2-S areas, D-FINE-S items, GPS lines); RF-DETR-S and GATv2 shown; older models
+  under "Other models"; SegFormer, Mask R-CNN MobileNet, GCN retired from new training. Checked in the Train dialog.
+* **Bug: one-click Train started from zero** when no earlier model existed, even for models with a licensed
+  pretrained start. Now uses the pretrained start.
+* **Tiled detection:** sheets larger than ~1.25 crops are detected tile by tile and merged. Test: 64 symbols incl.
+  ones cut by tile edges (and by two edges at once) found exactly once; a detector capped at 25 per pass finds all 64
+  with tiles; a stray oversized box does not swallow real symbols. Two merge bugs found and fixed by those tests.
+* **Layer + line style features:** PDF dash patterns and DXF linetypes (BYLAYER resolved) are extracted; layer
+  discipline (A/M/P/E...) and name words feed the line-by-line models. An existing GPS model still predicts via the API.
+* **Takeoff:** run lengths per system (ft), double-line centerlines, elbows/tees/crosses, scale from the sheet's scale
+  note or CAD units. Wall takeoff vs drawing truth on 5 plans: 0.15%, 0.00%, 0.73%, 0.57%, 0.80% error. End-cap
+  pairing bug found by the truth test and fixed.
+* **Bug: a killed training machine discovered after its time limit was marked 'timed out'** (charged, not retried)
+  — happened to a DINOv2 run here when memory ran out. Now retried as an infrastructure failure, not charged.
+* **RF-DETR fixed:** it was not learning to place boxes (check mAP50 0.001 after 8 rounds) because its DINOv2 backbone
+  trained at the full rate; the detector warm-up also reset every parameter group to one rate. Backbone at 0.15x
+  (RF-DETR's recipe), per-group warm-up, batch 2 at its native 512 px: 0.781 after 4 rounds, memory 7 GB -> 3.9 GB.
