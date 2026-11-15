@@ -35,7 +35,7 @@ Legend: **Verified** = implemented and exercised by tests and/or a real end-to-e
 | 22 | Billing-ready infrastructure | Verified locally / **Blocked** for live charges | billing accounts, Stripe customer + test card (verified against a mocked Stripe API), invoice item per ledger charge with the ledger key as Idempotency-Key, estimates, ledger with infra cost vs customer charge, idempotent events, monthly limit enforced before training and for hosting, reservations for running jobs, usage dashboard, history; Stripe off until `KA_STRIPE_SECRET_KEY`; prices are placeholders |
 | 23 | Organization isolation | Verified | org-prefixed storage, signed URLs, every query org-scoped; Test E + review scoping test |
 | 24 | Kentucky AI-consistent UI | Verified | v5 design system, Light + Dark, all screens (see `DESIGN_TOKENS.md`) |
-| 25 | Passing end-to-end tests | Verified | 57 passed (Tests A–F, review flow, training center, S3 storage, hosting, Lambda, Modal, Stripe, base models, cleanup) |
+| 25 | Passing end-to-end tests | Verified | 60 passed (Tests A–F, review flow, training center, S3 storage, hosting, Lambda, Modal, Stripe, base models, cleanup, model choice, estimates) |
 
 ## Other prompt sections
 * Training Center wizard (§13): dataset → readiness → task → architecture → starting point → recommended or
@@ -64,7 +64,7 @@ python label_studio/manage.py migrate
 python label_studio/manage.py collectstatic --noinput
 python label_studio/manage.py runserver 0.0.0.0:8080      # app at http://localhost:8080/ka/
 python label_studio/manage.py ka_worker                   # second terminal: runs training jobs
-cd label_studio && python -m pytest kentucky/tests -q     # 57 tests
+cd label_studio && python -m pytest kentucky/tests -q     # 60 tests
 ```
 The embedded labeling engine (precise outline editor) needs the Label Studio frontend build:
 `cd web && bun install && bun --bun run vite build --config vite.config.editor.ts --base /ka/engine/`.

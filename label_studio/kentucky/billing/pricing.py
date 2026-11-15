@@ -35,9 +35,12 @@ DEFAULT_PRICING = {
 
 # Rough CPU seconds per (epoch x item) on the reference 4-core dev machine, measured from local runs
 # (see docs/kentucky/TEST_RESULTS.md). Used only to produce an estimate RANGE.
+# Calibrated on 18 completed CPU runs through the platform (docs/kentucky/TEST_RESULTS.md, jobs 17-35): runtime per
+# epoch per training item (sheet x crops for image models, sheet for graph models). Unmeasured ids keep a guess.
 CPU_SECONDS_PER_EPOCH_ITEM = {
-    'seg-lraspp-mbv3': 1.2, 'seg-dinov2-s': 2.5, 'seg-segformer-b0': 1.5, 'inst-maskrcnn-mbv3': 3.5, 'det-rtdetrv2-r18': 6.0, 'det-dfine-s': 5.0, 'inst-maskrcnn-r50-v2': 25.0,
-    'gnn-sage-node': 0.02, 'gnn-gat-node': 0.05, 'gnn-gps-node': 0.12, 'gnn-gcn-node': 0.02, 'gnn-sage-edge': 0.04,
+    'seg-lraspp-mbv3': 0.25, 'seg-dinov2-s': 1.8, 'seg-segformer-b0': 1.5, 'inst-maskrcnn-mbv3': 2.3, 'det-rtdetrv2-r18': 5.5, 'det-dfine-s': 4.0,
+    'inst-maskrcnn-r50-v2': 25.0,
+    'gnn-sage-node': 0.008, 'gnn-gat-node': 0.01, 'gnn-gps-node': 0.015, 'gnn-gcn-node': 0.008, 'gnn-sage-edge': 0.02,
 }
 
 Q = Decimal('0.0001')
@@ -54,6 +57,15 @@ def tier(name: str) -> dict:
     if t is None:
         raise ValueError(f'Unknown compute tier {name}')
     return t
+
+
+def runtime_cap(catalog_id: str, config: dict, n_items: int, gpu_type: str) -> int:
+    """Default max runtime: twice the expected time rounded up to 15 min, at least 1 h, at most 24 h, so a larger
+    set is not killed by a fixed 1 h limit (a 9-sheet DINOv2 CPU run takes ~53 min)."""
+    t = tier(gpu_type)
+    items = n_items * (config.get('crops_per_sheet', 1) if catalog_id.startswith(('seg-', 'inst-')) else 1)
+    expect = CPU_SECONDS_PER_EPOCH_ITEM.get(catalog_id, 2.0) * config['epochs'] * max(items, 1) / float(t['speedup'])
+    return int(min(24 * 3600, max(3600, -(-2 * expect // 900) * 900)))
 
 
 def estimate_training(catalog_id: str, config: dict, n_items: int, gpu_type: str) -> dict:

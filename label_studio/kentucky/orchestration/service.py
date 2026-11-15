@@ -128,7 +128,10 @@ def _validate(job, org, version, entry, init, overrides, base_mv, gpu_type):
     t = pricing.tier(gpu_type)
     if t['provider'] == 'local' and not entry.get('cpu_trainable'):
         raise JobError(f'{entry["name"]} is not CPU-trainable; choose a GPU tier')
-    cfg = tcfg.validate(entry['id'], overrides)
+    n = len(version.splits['train'])
+    cfg = tcfg.validate(entry['id'], overrides, {'train_items': n})
+    if 'max_runtime_s' not in (overrides or {}):
+        cfg['max_runtime_s'] = pricing.runtime_cap(entry['id'], cfg, n, gpu_type)
     return cfg
 
 

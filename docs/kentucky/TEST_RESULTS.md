@@ -8,7 +8,7 @@ Measured on the development container (4 vCPU, no GPU, Python 3.12.3, torch 2.15
 ```bash
 cd label_studio
 python -m pytest kentucky/tests -q -p no:cacheprovider
-# 57 passed
+# 60 passed
 ```
 
 | File | What it proves |
@@ -24,6 +24,8 @@ python -m pytest kentucky/tests -q -p no:cacheprovider
 | `test_modal_provider.py` | Modal: stand-in SDK whose `spawn` runs the real deployed function body (`training/modal_entry.py`) into a local volume; real training, progress mirrored, checkpoint synced, model registered, billed once, call cancelled on cleanup |
 | `test_stripe.py` | Stripe test mode with the HTTP API mocked: customer created once (idempotent), `pm_card_visa` attached as default, one invoice item per ledger charge keyed by the ledger idempotency key, sub-cent amounts as decimal cents; live keys blocked without the operator flag |
 | `test_base_models.py` | DINOv2-S segmentation and RT-DETRv2 detection train through the job pipeline, register and serve predictions; their catalog records carry Apache-2.0 licenses pinned to exact revisions |
+| `test_outline_choice.py` | One-click outline training picks DINOv2-S only for mostly-scanned sets with 5+ checked sheets, LR-ASPP otherwise, and keeps the best-scoring architecture already trained on the set (a newer, worse experiment does not take over) |
+| `test_estimates.py` | Train-screen time estimates bracket 6 measured benchmark runtimes; the runtime limit scales with the job (1–24 h) and the estimate uses the same settings the job will |
 | `test_security.py` | **Test E** org B cannot read or change org A's drawings, datasets, annotations, jobs, checkpoints, models, deployments or API keys (API + signed file URLs) |
 | `test_training_failures.py` | **Test F** invalid datasets/selections fail validation; missing weights / unknown init / CPU-only restrictions; paid providers require operator enablement + payment method; cancellation kills the worker and bills once; timeouts terminate hung workers; worker crash retried (infra failure not charged); training-code errors fail without retry; ledger idempotency |
 
@@ -118,6 +120,7 @@ scan skew, verified to 0.1 px); every run started from Train → Customize; same
 | DINOv2-S segmentation | pretrained (Apache-2.0) | **mean IoU 0.744** | 47/47 | 12/12 | 11/11 | 39 min |
 | LR-ASPP MobileNetV3 | from zero | mean IoU 0.627 | 47/47 | 12/12 | 11/11 | 10 min |
 | **D-FINE-S** | pretrained (Apache-2.0) | **mAP50 0.954** | 45/47 | 12/12 | 11/11 | 13 min |
+| **D-FINE-S** | your vector-plan model (fine-tuned) | **mAP50 0.963** | 46/47 | 12/12 | 11/11 | 8 min |
 | RT-DETRv2-R18 | pretrained (Apache-2.0) | mAP50 0.753 | 30/47 | 12/12 | 8/11 | 18 min |
 | Mask R-CNN MobileNetV3 | from zero | mAP50 0.615 | 36/47 | 12/12 | 4/11 | 37 min |
 
@@ -126,6 +129,7 @@ scan skew, verified to 0.1 px); every run started from Train → Customize; same
 | Model | Start | Test result | Walls | Doors | Windows | CPU time |
 |---|---|---|---|---|---|---|
 | LR-ASPP MobileNetV3 | from zero | mean IoU 0.665 | 118/118 | 34/34 | 14/22 | 6 min |
+| DINOv2-S segmentation | pretrained (Apache-2.0) | mean IoU 0.651 | 118/118 | 34/34 | 12/22 | 53 min |
 | **RT-DETRv2-R18** | pretrained | **mAP50 0.893** | 101/118 | 34/34 | 22/22 | 27 min |
 | D-FINE-S | pretrained | mAP50 0.785 | 93/118 | 32/34 | 21/22 | 20 min |
 | **Graph transformer (GPS + GINE)** | from zero | **macro-F1 1.000** | 472/472 lines | 68/68 | 66/66 | 12 s |
@@ -135,7 +139,8 @@ scan skew, verified to 0.1 px); every run started from Train → Customize; same
 | GraphSAGE connections | from zero | macro-F1 0.927 | — | — | — | 16 s |
 
 What changed in the product because of these numbers: D-FINE-S is the default item model for scanned plan sets and
-RT-DETRv2 for vector sets; DINOv2-S is flagged "Best with 5+ sheets" (it trailed with 2 training sheets, led with 8);
+RT-DETRv2 for vector sets; DINOv2-S is the default outline model for scanned sets with 5+ checked sheets (it trailed with 2 training sheets, led
+with 8 scans, and tied LR-ASPP on clean vector drawings at 9x the time — check score 0.82 but test 0.65);
 the graph transformer is the default line-by-line model; Find more with AI takes each item type from the model with
 the best measured score for it. Synthetic drawings are easier than real ones — graph models reaching 1.00 here does
 not mean they will on customer CAD.
@@ -146,4 +151,13 @@ found, 0 wrong; through the Check screen on an unseen scan: 11/11 other doors, 0
 **Bugs found by running these through the platform, all fixed:** a stale worker could not register new models (now an
 explicit message + deploy rule); numpy types in proposal evidence broke saving; skewed-scan ground truth ignored the
 skew (test data); Deployments listed oldest first; finished jobs never freed their working copies (11.4 GB here) and a
-full disk produced a cryptic, charged, non-retried failure.
+full disk produced a cryptic, charged, non-retried failure. Later round: one-click Train always used LR-ASPP (now
+picks by measurement: DINOv2-S for scanned sets with 5+ checked sheets, else LR-ASPP, or the best-scoring
+architecture already trained on the set); it continued from the newest model anywhere in the org instead of this
+plan set's own; time estimates were 1.5-10x high (now calibrated on 18 real runs, test pins them) and assumed 12
+crops per sheet that jobs never used; every job had a fixed 1 h limit although a 9-sheet DINOv2 run takes 53 min
+(the limit now scales with the job, 1-24 h); "How it's improving" showed "v1 → v1" for two architectures.
+
+**Transfer between plan types:** D-FINE-S fine-tuned on the scans from the model trained on vector plans reached
+mAP50 0.963 in 8 min, better and faster than starting from the public COCO weights (0.954, 13 min) — a model
+trained on one plan set is a good starting point for the next, even across scan/vector.

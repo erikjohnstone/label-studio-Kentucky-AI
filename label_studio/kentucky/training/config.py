@@ -59,13 +59,14 @@ def recommended(catalog_id: str, dataset_stats: dict | None = None) -> dict:
         raise ConfigError(f'No training template for {catalog_id}')
     cfg = {**copy.deepcopy(COMMON), **copy.deepcopy(DEFAULTS[catalog_id])}
     n = (dataset_stats or {}).get('train_items')
-    if n is not None and n < 20 and catalog_id.startswith(('seg-', 'inst-')):
-        cfg['crops_per_sheet'] = max(cfg['crops_per_sheet'], 12)  # small datasets: more crops/epoch
+    if n is not None and n < 5 and catalog_id.startswith(('seg-', 'inst-')):
+        cfg['crops_per_sheet'] = max(cfg['crops_per_sheet'], 12)  # tiny sets: more crops per epoch
     return cfg
 
 
-def validate(catalog_id: str, overrides: dict | None) -> dict:
-    cfg = recommended(catalog_id)
+def validate(catalog_id: str, overrides: dict | None, dataset_stats: dict | None = None) -> dict:
+    """Recommended settings for this set (same ``dataset_stats`` as the estimate) with validated overrides on top."""
+    cfg = recommended(catalog_id, dataset_stats)
     allowed = set(cfg) | ({'_fault'} if os.environ.get('KA_ALLOW_FAULT_INJECTION') == '1' else set())
     for k, v in (overrides or {}).items():
         if k not in allowed:

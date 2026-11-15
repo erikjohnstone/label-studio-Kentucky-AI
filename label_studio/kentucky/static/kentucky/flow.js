@@ -161,7 +161,7 @@
     const hp = ps.find((x) => x.id === d.id);
     setTop([['Plan sets', '/ka/'], [d.name, `/ka/projects/${d.id}/`], 'Train']);
     const counts = (rd.stats && rd.stats.class_counts) || hp.counts;
-    const versions = ms.flatMap((m) => m.versions.map((v) => ({ ...v, m }))).filter((v) => v.dataset_id === d.id && v.task === 'semantic_segmentation' && v.report).sort((a, b) => a.version - b.version);
+    const versions = ms.flatMap((m) => m.versions.map((v) => ({ ...v, m }))).filter((v) => v.dataset_id === d.id && v.task === 'semantic_segmentation' && v.report).sort((a, b) => (a.created_at < b.created_at ? -1 : 1)); // in training order, across architectures
     const prev = versions[versions.length - 1];
     let speed = 'cpu-local';
     const isReady = () => !!rd.ready_for?.[adv ? adv.task : 'semantic_segmentation'];
@@ -233,11 +233,11 @@
       const loadDefaults = async () => { const r = await api(`training/defaults/?catalog_id=${cid}&train_items=${Math.max(1, hp.done)}`); defaults = r.config; schema = r.schema; enums = r.enums; if (!cfg || cfg._cid !== cid) cfg = { ...r.config, _cid: cid }; };
       const arches = () => cat.open_models.filter((m) => m.task === task);
       const draw = async () => {
-        if (!cid || !arches().some((a) => a.id === cid)) { const kind = hp.scanned * 2 > hp.sheets.length ? 'scan' : 'vector'; cid = (arches().find((a) => a.best_for === kind) || arches().find((a) => a.recommended) || arches().find((a) => a.cpu_trainable && !(a.min_sheets > hp.done)) || arches()[0])?.id; init = null; cfg = null; }
+        if (!cid || !arches().some((a) => a.id === cid)) { const kind = hp.scanned * 2 > hp.sheets.length ? 'scan' : 'vector'; cid = (arches().find((a) => a.best_for === kind && !(a.min_sheets > hp.done)) || arches().find((a) => a.recommended) || arches().find((a) => a.cpu_trainable && !(a.min_sheets > hp.done)) || arches()[0])?.id; init = null; cfg = null; }
         if (cid && (!cfg || cfg._cid !== cid)) await loadDefaults();
         const arch = arches().find((a) => a.id === cid);
         const inits = arch ? arch.inits.filter((i) => i.id !== 'checkpoint') : [];
-        const mine = own.filter((v) => v.catalog_id === cid);
+        const mine = own.filter((v) => v.catalog_id === cid).sort((a, b) => (b.dataset_id === d.id) - (a.dataset_id === d.id)); // this plan set's first
         if (!init) init = mine.length ? 'checkpoint' : 'scratch';
         if (init === 'checkpoint' && !base && mine[0]) base = mine[0].id;
         const step = (n, t, ...kids) => h('section.advstep', {}, h('div.stepl', {}, h('span.n', {}, String(n)), h('b', {}, t)), ...kids);
@@ -281,8 +281,8 @@
     }
     // history (measured scores only)
     const hist = h('div.hist', {}, versions.slice(-2).flatMap((v, i) => [i ? h('span.harrow') : null,
-      h('div.hv', {}, lbl(`v${v.version} · ${fmt.date(v.created_at).replace(/, \d{4}$/, '')}`), h('b', {}, Math.round(v.report.score * 100) + '%'), h('small', {}, 'items found on test sheet'))]),
-    versions.length ? h('span.harrow') : null, h('div.hv.next', {}, lbl(`v${prev ? prev.version + 1 : 1} · today`, true), h('b', {}, '?'), h('small', {}, `Find out in ~${fmt.dur(mid(est['cpu-local']))}`)),
+      h('div.hv', { title: `${v.m.name} v${v.version}` }, lbl(`Run ${versions.indexOf(v) + 1} · ${fmt.date(v.created_at).replace(/, \d{4}$/, '')}`), h('b', {}, Math.round(v.report.score * 100) + '%'), h('small', {}, 'items found on test sheet'))]),
+    versions.length ? h('span.harrow') : null, h('div.hv.next', {}, lbl(`Run ${versions.length + 1} · today`, true), h('b', {}, '?'), h('small', {}, `Find out in ~${fmt.dur(mid(est['cpu-local']))}`)),
     (() => { const pts = versions.slice(-4).map((v) => v.report.score); if (!pts.length) return null; const xs = pts.map((_, i) => (i / Math.max(pts.length, 1)) * 300); const y = (s) => 64 - s * 56;
       return svgEl('svg', { viewBox: '0 0 300 70', preserveAspectRatio: 'none' }, svgEl('path', { d: pts.map((s, i) => `${i ? 'L' : 'M'}${xs[i]} ${y(s)}`).join(' '), stroke: 'var(--ink)', 'stroke-width': 2, fill: 'none' }),
         svgEl('path', { d: `M${xs[xs.length - 1]} ${y(pts[pts.length - 1])} L300 ${y(Math.min(1, pts[pts.length - 1] + 0.05))}`, stroke: 'var(--teal)', 'stroke-width': 2, 'stroke-dasharray': '5 5', fill: 'none' }),

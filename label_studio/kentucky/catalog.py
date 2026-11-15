@@ -52,8 +52,9 @@ CATALOG = [
         **HF, 'version': 'transformers>=4.48',
         'description': 'Self-supervised ViT backbone pretrained by Meta on 142M images, with a multi-scale head for thin linework. '
                        'Measured: on 10 scanned plans (8 for training) mean IoU 0.74 vs 0.63 for LR-ASPP, every item found; on a '
-                       '2-sheet set it trailed (0.10 vs 0.34). Use it once you have 5+ checked sheets; about 4x the training time.',
-        'gpu_recommended': 'T4 / A10G', 'cpu_trainable': True, 'badge': 'Best with 5+ sheets', 'min_sheets': 5,
+                       '2-sheet set it trailed (0.10 vs 0.34); on 13 clean vector plans it tied (0.65 vs 0.67). Use it for scans once you '
+                       'have 5+ checked sheets; about 4-9x the training time.',
+        'gpu_recommended': 'T4 / A10G', 'cpu_trainable': True, 'badge': 'Best for scans (5+ sheets)', 'best_for': 'scan', 'min_sheets': 5,
         'inits': [{
             'id': 'pretrained', 'label': 'DINOv2-with-registers-small (Meta, Apache-2.0)', 'hf_id': 'facebook/dinov2-with-registers-small',
             'checkpoint_license': 'Apache-2.0 (model card + LICENSE)', 'commercial_use': True, 'commercially_deployable': True,
@@ -78,7 +79,7 @@ CATALOG = [
         **HF, 'version': 'transformers>=4.52',
         'description': 'DETR-family detector with fine-grained box refinement, 10M parameters. Measured on 10 scanned plans: mAP50 0.95 '
                        '(doors 12/12, windows 11/11, walls 45/47) vs 0.75 for RT-DETRv2. On 13 vector plans it scored 0.78 vs 0.89, '
-                       'so it is the pick for scanned plan sets. Gives boxes.',
+                       'so it is the pick for scanned plan sets; fine-tuned from a vector-plan model it reached 0.96 in 8 min. Gives boxes.',
         'gpu_recommended': 'T4 / A10G (CPU ok for small sets)', 'cpu_trainable': True, 'badge': 'Best for scans', 'best_for': 'scan',
         'inits': [{
             'id': 'pretrained', 'label': 'D-FINE-S COCO (ustc-community, Apache-2.0)', 'hf_id': 'ustc-community/dfine-small-coco',

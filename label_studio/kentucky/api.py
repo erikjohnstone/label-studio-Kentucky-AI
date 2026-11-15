@@ -916,6 +916,28 @@ GOALS = {
 }
 
 
+def _outline_choice(d) -> str:
+    """Architecture for one-click 'outlines' training, by measurement (docs/kentucky/TEST_RESULTS.md): keep the
+    best-scoring architecture already trained on this plan set (so the run continues from it); otherwise DINOv2-S for mostly
+    scanned sets with 5+ checked sheets (0.74 vs 0.63 mean IoU), else LR-ASPP (as good on vectors, much faster)."""
+    from .review_api import _sheet_state
+
+    trained = [mv for mv in ModelVersion.objects.filter(organization=d.organization, dataset_version__dataset=d, status='ready',
+                                                        model__task='semantic_segmentation').select_related('model')
+               if catalog.get(mv.model.catalog_id)]
+    if trained:  # the best-scoring one, not the newest: an experiment must not change the default
+        return max(trained, key=lambda mv: ((TA.report_card(mv.metrics, mv.model.task) or {}).get('score') or 0, mv.created_at)).model.catalog_id
+    sheets = list(d.sheets.all())
+    pend = dict(Proposal.objects.filter(dataset=d, kind=Proposal.Kind.CV_OBJECT, status='pending')
+                .values_list('sheet_id').annotate(n=Count('id')).values_list('sheet_id', 'n'))
+    done = sum(1 for s in sheets if _sheet_state(s, pend.get(s.id, 0)) == 'done')
+    scanned = sum(1 for s in sheets if not s.has_vector)
+    item = catalog.get('seg-dinov2-s')
+    if item and scanned * 2 > len(sheets) and done >= item.get('min_sheets', 0):
+        return 'seg-dinov2-s'
+    return GOALS['outlines']['catalog_id']
+
+
 @api_view(['POST'])
 def dataset_train(request, pk):
     """One-click training: snapshot the project (immutable version) and create a validated job for the goal.
@@ -929,6 +951,8 @@ def dataset_train(request, pk):
         if item is None:
             raise ValidationError({'catalog_id': 'unknown architecture'})
         goal = {'task': item['task'], 'catalog_id': item['id']}
+    elif goal is GOALS['outlines']:
+        goal = {**goal, 'catalog_id': _outline_choice(d)}
     v = create_version(d, request.user, notes='created by Train model')
     if not v.readiness['ready_for'].get(goal['task']):
         return Response({'ready': False, 'readiness': v.readiness, 'version_id': v.id}, status=200)
@@ -937,8 +961,9 @@ def dataset_train(request, pk):
         if request.data.get('base_model_version_id'):
             base = _get(ModelVersion, request, pk=request.data['base_model_version_id'])
         else:
-            base = (ModelVersion.objects.filter(organization=d.organization, model__catalog_id=goal['catalog_id'], status='ready')
-                    .order_by('-created_at').first())
+            same = ModelVersion.objects.filter(organization=d.organization, model__catalog_id=goal['catalog_id'], status='ready')
+            base = (same.filter(dataset_version__dataset=d).order_by('-created_at').first()  # this plan set's model first
+                    or same.order_by('-created_at').first())
     if init is None:
         init = 'checkpoint' if base else 'scratch'
     j = orch.create_job(d.organization, request.user, v, goal['catalog_id'], init,
@@ -951,22 +976,21 @@ def dataset_train(request, pk):
 @api_view(['GET'])
 def dataset_estimate(request, pk):
     """Up-front time/cost for the Train screen (before any job exists)."""
-    from .training.config import recommended
-
     from .training.config import ConfigError, validate
 
     d = _get(Dataset, request, pk=pk)
     goal = GOALS.get(request.GET.get('goal', 'outlines'), GOALS['outlines'])
-    cid = request.GET.get('catalog_id') or goal['catalog_id']
+    cid = request.GET.get('catalog_id') or (_outline_choice(d) if goal is GOALS['outlines'] else goal['catalog_id'])
     if catalog.get(cid) is None:
         raise ValidationError({'catalog_id': 'unknown architecture'})
     n = max(1, round(d.sheets.count() * 0.7))
     overrides = {k: request.GET[k] for k in ('epochs', 'batch_size', 'crops_per_sheet', 'training_scale') if request.GET.get(k)}
     try:
-        cfg = {**recommended(cid, {'train_items': n}), **validate(cid, overrides)} if overrides else recommended(cid, {'train_items': n})
+        cfg = validate(cid, overrides, {'train_items': n})
     except ConfigError as e:
         raise ValidationError({'detail': str(e)})
-    return Response({g: pricing.estimate_training(cid, cfg, n, g) for g in ('cpu-local', 'nvidia-t4', 'nvidia-a10g')})
+    caps = {g: pricing.runtime_cap(cid, cfg, n, g) for g in ('cpu-local', 'nvidia-t4', 'nvidia-a10g')}
+    return Response({g: pricing.estimate_training(cid, {**cfg, 'max_runtime_s': caps[g]}, n, g) for g in caps})
 
 
 @api_view(['GET'])
