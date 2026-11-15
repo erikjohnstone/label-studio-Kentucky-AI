@@ -9,6 +9,7 @@ All research used public, official sources; no accounts were created and no serv
 | What we reuse from Label Studio (and the Community/Enterprise boundary) | [LABEL_STUDIO_AUDIT.md](LABEL_STUDIO_AUDIT.md) |
 | Model and checkpoint licenses | [LICENSING.md](LICENSING.md), [MODEL_CATALOG.md](MODEL_CATALOG.md) |
 | GPU providers, terms of service, spending safety | [GPU_PROVIDERS.md](GPU_PROVIDERS.md) |
+| Task-specific pretrained base models and their code / weights / data licenses | [research/BASE_MODELS.md](research/BASE_MODELS.md) |
 | UI/UX: seven research passes and the resulting design system | [DESIGN_TOKENS.md](DESIGN_TOKENS.md) (below) and `design/concepts/` |
 
 ## UI/UX research (seven parallel studies, real 1440×900 captures)
