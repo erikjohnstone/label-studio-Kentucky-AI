@@ -121,7 +121,8 @@ scan skew, verified to 0.1 px); every run started from Train → Customize; same
 | DINOv2-S segmentation | pretrained (Apache-2.0) | mean IoU 0.744 | 47/47 | 12/12 | 11/11 | 39 min |
 | LR-ASPP MobileNetV3 | from zero | mean IoU 0.627 | 47/47 | 12/12 | 11/11 | 10 min |
 | **D-FINE-S** | pretrained (Apache-2.0) | **mAP50 0.954** | 45/47 | 12/12 | 11/11 | 13 min |
-| **D-FINE-S** | your vector-plan model (fine-tuned) | **mAP50 0.963** | 46/47 | 12/12 | 11/11 | 8 min |
+| **RF-DETR-S** (after the backbone-rate fix) | pretrained (Apache-2.0) | **mAP50 0.981** | 45/47 | 12/12 | 11/11 | 30 min |
+| D-FINE-S | your vector-plan model (fine-tuned) | mAP50 0.963 | 46/47 | 12/12 | 11/11 | 8 min |
 | RT-DETRv2-R18 | pretrained (Apache-2.0) | mAP50 0.753 | 30/47 | 12/12 | 8/11 | 18 min |
 | Mask R-CNN MobileNetV3 | from zero | mAP50 0.615 | 36/47 | 12/12 | 4/11 | 37 min |
 
@@ -185,4 +186,5 @@ After a 7-track literature and license review (research/MODEL_REVIEW_2026-11.md)
   — happened to a DINOv2 run here when memory ran out. Now retried as an infrastructure failure, not charged.
 * **RF-DETR fixed:** it was not learning to place boxes (check mAP50 0.001 after 8 rounds) because its DINOv2 backbone
   trained at the full rate; the detector warm-up also reset every parameter group to one rate. Backbone at 0.15x
-  (RF-DETR's recipe), per-group warm-up, batch 2 at its native 512 px: 0.781 after 4 rounds, memory 7 GB -> 3.9 GB.
+  (RF-DETR's recipe), per-group warm-up, batch 2 at its native 512 px: 0.781 after 4 rounds, memory 7 GB -> 3.9 GB;
+  test mAP50 0.981 on the scan benchmark (vs 0.954 / 0.963 for D-FINE-S), so it is now the recommended item counter.

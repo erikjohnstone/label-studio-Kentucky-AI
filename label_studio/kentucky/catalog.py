@@ -70,7 +70,7 @@ CATALOG = [
         'excluded_checkpoints': [{'id': 'nvidia/mit-b0', 'reason': 'NVIDIA Source Code License - non-commercial'}],
     },
     {
-        'id': 'det-dfine-s', 'tier': 'default', 'plain_name': 'Precise item counter', 'task': 'instance_segmentation', 'family': 'cv', 'name': 'D-FINE-S (pretrained)',
+        'id': 'det-dfine-s', 'tier': 'keep', 'plain_name': 'Precise item counter', 'task': 'instance_segmentation', 'family': 'cv', 'name': 'D-FINE-S (pretrained)',
         'architecture': 'transformers.DFineForObjectDetection (HGNetV2-S backbone, fine-grained box refinement); outlines are boxes',
         **HF, 'version': 'transformers>=4.52',
         'description': 'Finds and counts items like doors, fixtures and devices. Best with small symbols and at placing each one exactly.',
@@ -85,11 +85,11 @@ CATALOG = [
         }, SCRATCH],
     },
     {
-        'id': 'det-rfdetr-s', 'tier': 'keep', 'plain_name': 'Adaptive item counter', 'task': 'instance_segmentation', 'family': 'cv', 'name': 'RF-DETR-S (pretrained)',
+        'id': 'det-rfdetr-s', 'tier': 'default', 'plain_name': 'Adaptive item counter', 'task': 'instance_segmentation', 'family': 'cv', 'name': 'RF-DETR-S (pretrained)',
         'architecture': 'transformers.RfDetrForObjectDetection (DINOv2-S windowed backbone, LW-DETR decoder); outlines are boxes',
         **HF, 'version': 'transformers>=5.8',
         'description': 'Finds and counts items. Built to learn unfamiliar symbols quickly. Bigger and slower to train than D-FINE.',
-        'gpu_recommended': 'T4 / A10G', 'badge': 'Learns new symbols fast', 'cpu_trainable': True, 'experimental': True,
+        'gpu_recommended': 'T4 / A10G', 'badge': 'Learns new symbols fast', 'cpu_trainable': True,
         'inits': [{
             'id': 'pretrained', 'label': 'RF-DETR-S COCO (Roboflow, Apache-2.0)', 'hf_id': 'Roboflow/rf-detr-small',
             'checkpoint_license': 'Apache-2.0 (model card)', 'commercial_use': True, 'commercially_deployable': True,

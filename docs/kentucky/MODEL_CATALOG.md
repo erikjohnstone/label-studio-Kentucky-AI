@@ -81,7 +81,7 @@ Results from the small synthetic platform tests are kept in TEST_RESULTS.md as b
 | Task | Default | Shown | Other | Retired |
 |---|---|---|---|---|
 | Outline areas | DINOv2-S | — | LR-ASPP | SegFormer-B0 |
-| Item by item | D-FINE-S (until RF-DETR trains reliably here) | RF-DETR-S | RT-DETRv2, Mask R-CNN R50 | Mask R-CNN MobileNetV3 |
+| Item by item | RF-DETR-S | D-FINE-S | RT-DETRv2, Mask R-CNN R50 | Mask R-CNN MobileNetV3 |
 | Name every line | GPS graph transformer | GATv2 | GraphSAGE | GCN |
 | Connections | GraphSAGE edge classifier | — | — | — |
 One-click Train uses the default with its licensed pretrained start (previously it started from zero when no earlier model existed).
