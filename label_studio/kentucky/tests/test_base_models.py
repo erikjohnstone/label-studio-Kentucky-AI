@@ -14,7 +14,8 @@ from .test_training_failures import _wait
 
 
 def test_catalog_license_records():
-    for cid, hf in (('seg-dinov2-s', 'facebook/dinov2-with-registers-small'), ('det-rtdetrv2-r18', 'PekingU/rtdetr_v2_r18vd')):
+    for cid, hf in (('seg-dinov2-s', 'facebook/dinov2-with-registers-small'), ('det-rtdetrv2-r18', 'PekingU/rtdetr_v2_r18vd'),
+                    ('det-dfine-s', 'ustc-community/dfine-small-coco'), ('det-rfdetr-s', 'Roboflow/rf-detr-small')):
         item = catalog.get(cid)
         pre = next(i for i in item['inits'] if i['id'] == 'pretrained')
         assert pre['hf_id'] == hf and pre['commercially_deployable'] is True and 'Apache-2.0' in pre['checkpoint_license']
@@ -25,6 +26,7 @@ def test_catalog_license_records():
 @pytest.mark.parametrize('cid,cfg', [
     ('seg-dinov2-s', {'epochs': 2, 'crop_size': 196, 'crops_per_sheet': 2, 'training_scale': 0.3}),
     ('det-rtdetrv2-r18', {'epochs': 2, 'crop_size': 320, 'crops_per_sheet': 2, 'batch_size': 2, 'training_scale': 0.3}),
+    ('det-rfdetr-s', {'epochs': 1, 'crop_size': 320, 'crops_per_sheet': 1, 'batch_size': 2, 'training_scale': 0.3}),
 ])
 def test_new_base_models_train_register_and_predict(org_a, labeled_dataset, cid, cfg):
     user, org = org_a

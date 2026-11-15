@@ -38,7 +38,7 @@ DEFAULT_PRICING = {
 # Calibrated on 18 completed CPU runs through the platform (docs/kentucky/TEST_RESULTS.md, jobs 17-35): runtime per
 # epoch per training item (sheet x crops for image models, sheet for graph models). Unmeasured ids keep a guess.
 CPU_SECONDS_PER_EPOCH_ITEM = {
-    'seg-lraspp-mbv3': 0.25, 'seg-dinov2-s': 1.8, 'seg-segformer-b0': 1.5, 'inst-maskrcnn-mbv3': 2.3, 'det-rtdetrv2-r18': 5.5, 'det-dfine-s': 4.0,
+    'seg-lraspp-mbv3': 0.25, 'seg-dinov2-s': 1.8, 'seg-segformer-b0': 1.5, 'inst-maskrcnn-mbv3': 2.3, 'det-rtdetrv2-r18': 5.5, 'det-dfine-s': 4.0, 'det-rfdetr-s': 8.0,
     'inst-maskrcnn-r50-v2': 25.0,
     'gnn-sage-node': 0.008, 'gnn-gat-node': 0.01, 'gnn-gps-node': 0.015, 'gnn-gcn-node': 0.008, 'gnn-sage-edge': 0.02,
 }

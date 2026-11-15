@@ -91,6 +91,23 @@ CATALOG = [
         }, SCRATCH],
     },
     {
+        'id': 'det-rfdetr-s', 'task': 'instance_segmentation', 'family': 'cv', 'name': 'RF-DETR-S (pretrained)',
+        'architecture': 'transformers.RfDetrForObjectDetection (DINOv2-S windowed backbone, LW-DETR decoder); outlines are boxes',
+        **HF, 'version': 'transformers>=5.8',
+        'description': 'Roboflow detector on a DINOv2 backbone, 32M parameters, state of the art on COCO and on the RF100-VL '
+                       'domain-transfer benchmark. Not yet measured on plans here; heavier on CPU than D-FINE-S. Gives boxes.',
+        'gpu_recommended': 'T4 / A10G', 'cpu_trainable': True, 'experimental': True,
+        'inits': [{
+            'id': 'pretrained', 'label': 'RF-DETR-S COCO (Roboflow, Apache-2.0)', 'hf_id': 'Roboflow/rf-detr-small',
+            'checkpoint_license': 'Apache-2.0 (model card)', 'commercial_use': True, 'commercially_deployable': True,
+            'fine_tuning_allowed': True, 'redistribution': 'allowed with license notice', 'hosting_restrictions': 'none',
+            'attribution': 'Roboflow RF-DETR (Apache-2.0 for nano/small/medium/base; the larger sizes and RF-DETR+ use other '
+                           'licenses and are excluded); DINOv2 backbone by Meta (Apache-2.0)',
+            'checksum': None, 'revision': '3bdc465063270f99769da5a1b4c00c68bd2d439d', 'source': 'https://huggingface.co/Roboflow/rf-detr-small',
+            'note': 'Pinned revision; config vendored in training/configs.',
+        }, SCRATCH],
+    },
+    {
         'id': 'det-rtdetrv2-r18', 'task': 'instance_segmentation', 'family': 'cv', 'name': 'RT-DETRv2 R18 (pretrained)',
         'architecture': 'transformers.RTDetrV2ForObjectDetection (ResNet-18-vd, 300 queries); outlines are boxes', **HF, 'version': 'transformers>=4.49',
         'description': 'Real-time detection transformer pretrained on COCO. Measured on 13 vector plans: mAP50 0.89 (doors 34/34, windows '
