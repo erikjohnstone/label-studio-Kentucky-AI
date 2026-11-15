@@ -73,12 +73,14 @@ def signed_file(request, token):
         data = storage.verify_signed(token, int(request.GET.get('ttl', storage.DEFAULT_TTL_S)))
     except (signing.BadSignature, signing.SignatureExpired, storage.StorageError, ValueError):
         raise Http404()
-    p = storage.path(data['k'], data['o'])
-    if not p.exists():
+    try:
+        body = storage.get_bytes(data['k'], data['o'])
+    except (FileNotFoundError, IsADirectoryError):
         raise Http404()
-    ctype = mimetypes.guess_type(p.name)[0] or 'application/octet-stream'
-    resp = HttpResponse(p.read_bytes(), content_type=ctype)
-    resp['Content-Disposition'] = f'attachment; filename="{data.get("f") or p.name}"'
+    name = data['k'].rsplit('/', 1)[-1]
+    ctype = mimetypes.guess_type(name)[0] or 'application/octet-stream'
+    resp = HttpResponse(body, content_type=ctype)
+    resp['Content-Disposition'] = f'attachment; filename="{data.get("f") or name}"'
     resp['Cache-Control'] = 'no-store'
     return resp
 

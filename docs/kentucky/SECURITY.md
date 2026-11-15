@@ -16,8 +16,9 @@
 | Telemetry | Upstream defaults that sent errors to HumanSignal's Sentry, analytics, and PyPI version checks are off by default in this fork. |
 
 ## Known gaps (not production-ready yet)
-* Storage backend is the local filesystem; an S3/R2 backend with server-side encryption and
-  presigned URLs is still to be implemented behind `storage.py`.
+* The S3/R2 backend (`KA_STORAGE_BACKEND=s3`) is implemented and tested against emulated S3 only; enable bucket
+  encryption at rest on the R2/S3 side (or `KA_S3_SSE=1` for S3 SSE-AES256) and keep the bucket private —
+  downloads still go through the platform's signed, org-checked URLs, never public bucket links.
 * Rate limiter is in-process (use Redis for multi-process).
 * Malware scanning of uploads (e.g. ClamAV) is not integrated; inputs are parsed by memory-safe Python
   libraries plus PDFium.

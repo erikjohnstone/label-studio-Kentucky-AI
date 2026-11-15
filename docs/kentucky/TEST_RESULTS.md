@@ -8,7 +8,7 @@ Measured on the development container (4 vCPU, no GPU, Python 3.12.3, torch 2.15
 ```bash
 cd label_studio
 python -m pytest kentucky/tests -q -p no:cacheprovider
-# 40 passed (39 in 252 s + test_training_center.py)
+# 42 passed
 ```
 
 | File | What it proves |
@@ -18,6 +18,7 @@ python -m pytest kentucky/tests -q -p no:cacheprovider
 | `test_e2e.py` | **Test A** CV segmentation on scanned drawings (upload → label → review → export masks → real training → checkpoint → evaluation → registry → inference → predictions over the drawing). **Test B + C** vector GNN (PDF/DXF → primitives → graph → node labels/edge fixes/groups → validate → PyG export → real GNN training → evaluation → registry → inference) and fine-tuning from the registered checkpoint compared with the baseline. **Test D** agentic annotation with provenance (proposals → accept/modify/reject → provenance saved → export contains only approved; rejected never ground truth) |
 | `test_review_flow.py` | Check screen: AI suggestions → Keep / relabel / Dismiss / undo → autosaved Label Studio annotation keeps agent provenance (`ka<proposal>` ids) → Done dismisses the rest and approves the sheet; home overview states; only checked sheets enter a dataset version; org scoping of every review endpoint; outline repair of self-crossing polygons |
 | `test_training_center.py` | Training Center advanced mode: defaults + schema, per-architecture estimates, explicit architecture / start point / settings stored exactly, invalid settings rejected, run lineage for Experiments |
+| `test_storage_s3.py` | S3-compatible backend (R2/S3/MinIO) against moto's emulated S3: round-trips, org-prefix refusal, prefix delete, PDF ingestion writing to the bucket, sheet image + signed download served from it, cross-org 404 |
 | `test_security.py` | **Test E** org B cannot read or change org A's drawings, datasets, annotations, jobs, checkpoints, models, deployments or API keys (API + signed file URLs) |
 | `test_training_failures.py` | **Test F** invalid datasets/selections fail validation; missing weights / unknown init / CPU-only restrictions; paid providers require operator enablement + payment method; cancellation kills the worker and bills once; timeouts terminate hung workers; worker crash retried (infra failure not charged); training-code errors fail without retry; ledger idempotency |
 
@@ -67,4 +68,4 @@ drawings — production accuracy must be measured on customer plans.
 
 * Paid GPUs (Modal, Lambda): adapters implemented and unit-tested with fakes; no billable GPU was created.
 * Stripe: off unless `KA_STRIPE_SECRET_KEY` is set; ledger and limits are tested locally.
-* Postgres/S3/R2 in production; Railway/hosted deployment.
+* Postgres and a real R2/S3 bucket in production (S3 code path verified only against moto); Railway/hosted deployment.

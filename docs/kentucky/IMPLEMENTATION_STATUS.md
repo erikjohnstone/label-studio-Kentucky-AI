@@ -35,14 +35,14 @@ Legend: **Verified** = implemented and exercised by tests and/or a real end-to-e
 | 22 | Billing-ready infrastructure | Verified locally / **Blocked** for live charges | monthly limit enforced before training, reservations for running jobs, payment-method gate; Stripe off until `KA_STRIPE_SECRET_KEY`; prices are placeholders |
 | 23 | Organization isolation | Verified | org-prefixed storage, signed URLs, every query org-scoped; Test E + review scoping test |
 | 24 | Kentucky AI-consistent UI | Verified | v5 design system, Light + Dark, all screens (see `DESIGN_TOKENS.md`) |
-| 25 | Passing end-to-end tests | Verified | 40 passed (Tests A–F, review flow, training center) |
+| 25 | Passing end-to-end tests | Verified | 42 passed (Tests A–F, review flow, training center, S3 storage) |
 
 ## Other prompt sections
 * Training Center wizard (§13): dataset → readiness → task → architecture → starting point → recommended or
   advanced settings → cost estimate → authorize → live progress → evaluation → deploy. **Verified.**
 * Experiment tracking (§15): Experiments page with lineage, metrics, runtime, hardware, compare (curves + config diff). **Verified.**
 * Kentucky AI pretrained models: **Not available** — none exist in the audited repositories; the UI says so.
-* Storage: local filesystem backend **Verified**; S3/R2 backend **Not implemented** (selected by `KA_STORAGE_BACKEND=s3` once written and credentialed).
+* Storage: local filesystem backend **Verified**; S3-compatible backend for Cloudflare R2 / S3 / MinIO **Verified against an emulated S3 API (moto)**, not yet against a real bucket. Enable with `KA_STORAGE_BACKEND=s3`, `KA_S3_BUCKET`, `KA_S3_ENDPOINT_URL`, `KA_S3_REGION` and the standard AWS key variables.
 * Dedicated hosting (always-on instances): **Not implemented**; deployments run in the platform process (serverless-style, metered per request).
 * Hosted platform (Railway or similar): **Not deployed** — per instruction, no services connected yet.
 
@@ -52,7 +52,7 @@ Legend: **Verified** = implemented and exercised by tests and/or a real end-to-e
 | Modal GPU training | Modal workspace tokens, `KA_ENABLE_PAID_COMPUTE=1`, written OK from Modal for resale use (ToS §1.1/§1.3c) |
 | Lambda GPU training | `LAMBDA_API_KEY`, region, SSH key, bootstrap implementation |
 | Stripe | `KA_STRIPE_SECRET_KEY` (test mode first), real price table in `KA_PRICING` |
-| Object storage | R2/S3 bucket + keys, S3 backend implementation |
+| Object storage | R2/S3 bucket + access keys (backend implemented) |
 | Production DB / hosting | Postgres, a host (Railway etc.), domain, TLS |
 
 ## Start the platform locally
@@ -64,7 +64,7 @@ python label_studio/manage.py migrate
 python label_studio/manage.py collectstatic --noinput
 python label_studio/manage.py runserver 0.0.0.0:8080      # app at http://localhost:8080/ka/
 python label_studio/manage.py ka_worker                   # second terminal: runs training jobs
-cd label_studio && python -m pytest kentucky/tests -q     # 40 tests
+cd label_studio && python -m pytest kentucky/tests -q     # 42 tests
 ```
 The embedded labeling engine (precise outline editor) needs the Label Studio frontend build:
 `cd web && bun install && bun --bun run vite build --config vite.config.editor.ts --base /ka/engine/`.
