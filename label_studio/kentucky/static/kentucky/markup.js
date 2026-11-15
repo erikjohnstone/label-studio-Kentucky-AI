@@ -18,7 +18,7 @@
 
   function counts() {
     const out = {};
-    const ann = S.engine?.annotationStore?.selected;
+    const ann = S.store?.annotationStore?.selected;
     (ann?.regionStore?.regions || []).forEach((r) => { const l = r.labeling?.mainValue || r.labelName || (r.labels || [])[0]; if (l) out[l] = (out[l] || 0) + 1; });
     return out;
   }
@@ -39,12 +39,14 @@
         d.next ? h('a.btn.sm.ghost', { href: `/ka/markup/${d.next}/` }, 'Next sheet ›') : null,
         h('button.btn.sm', { onclick: suggest }, '✦ Suggest with AI'), saveBtn),
       h('div.canvas-body', {},
-        h('div.canvas-stage', {}, h('div', { id: 'engine' }), h('div.hint', { id: 'hint' }, 'Pick an item on the right, then click around it. Double-click to finish.')),
+        h('div.canvas-stage', {}, h('div', { id: 'engine' }), h('div.hint', { id: 'hint' }, 'Pick an item on the right, then click around it.')),
         h('aside.canvas-side', {},
-          h('section', {}, h('div.key', {}, 'What are you labeling?'), list),
+          h('section', {}, h('div.key', {}, 'Tool'), h('div.toggle', { id: 'tooltoggle', style: { width: '100%' } },
+            h('button.on', { 'data-t': 'outline', style: { flex: 1 }, onclick: () => setTool('outline') }, 'Outline'), h('button', { 'data-t': 'box', style: { flex: 1 }, onclick: () => setTool('box') }, 'Box')),
+            h('div.key', { style: { marginTop: '8px' } }, 'What are you labeling?'), list),
           h('section', {}, h('div.key', {}, 'How'), h('div.soft', { style: { fontSize: '14px', lineHeight: 1.6 } },
-            h('div', {}, h('b', {}, 'Outline: '), 'click each corner, double-click to close.'),
-            h('div', {}, h('b', {}, 'Box: '), 'hold ', h('kbd', {}, 'Shift'), ' and drag (quick for doors, fixtures).'),
+            h('div', {}, h('b', {}, 'Outline: '), 'click each corner, then the first point to close.'),
+            h('div', {}, h('b', {}, 'Box: '), 'drag a rectangle — quick for doors and fixtures.'),
             h('div', {}, h('b', {}, 'Fix: '), 'click a shape to move corners. ', h('kbd', {}, 'Del'), ' removes it.'),
             h('div', {}, h('b', {}, 'Zoom: '), 'scroll · drag with ', h('kbd', {}, 'Space'), ' held.'))),
           h('section', { id: 'ai' }, h('div.key', {}, 'AI suggestions'),
@@ -58,37 +60,57 @@
 
   function drawList() {
     const c = counts();
-    S.list.replaceChildren(...S.classes.map((cl, i) => h('div.cond' + (S.active === cl.name ? '.on' : ''), { onclick: () => pick(cl.name) },
-      h('span.swatch', { style: { background: cl.color } }), h('span', {}, cap(cl.name)), h('kbd', {}, String(i + 1)), h('span.n', {}, String(c[cl.name] || 0)))));
+    const used = S.classes.filter((cl) => (S.data.dataset_counts || {})[cl.name] || c[cl.name]);
+    const main = used.length ? used : S.classes.slice(0, 4);
+    const rest = S.classes.filter((cl) => !main.includes(cl));
+    const row = (cl, i) => h('div.cond' + (S.active === cl.name ? '.on' : ''), { onclick: () => pick(cl.name) },
+      h('span.swatch', { style: { background: cl.color } }), h('span', { style: { fontWeight: 600 } }, cap(cl.name)), h('span.n', {}, String(c[cl.name] || 0)), i < 9 ? h('kbd', {}, String(i + 1)) : null);
+    S.order = main.concat(rest);
+    S.list.replaceChildren(...main.map(row), rest.length ? h('details', { style: { marginTop: '6px' }, open: rest.some((r) => r.name === S.active) || undefined },
+      h('summary', { style: { cursor: 'pointer', fontSize: '13.5px', color: 'var(--ink-3)', padding: '6px 12px' } }, `More items (${rest.length})`), rest.map((cl, j) => row(cl, main.length + j))) : null);
   }
 
   function pick(name) {
     S.active = name;
-    // select the label in both tools (outline + box) so whichever tool is used gets this label
-    const ann = S.engine?.annotationStore?.selected;
-    ann?.names?.forEach((ctrl) => {
-      if (!ctrl.children) return;
-      ctrl.children.forEach((lab) => { if (lab.value === name && !lab.selected) lab.setSelected?.(true); else if (lab.value !== name && lab.selected) lab.setSelected?.(false); });
+    S.tool = S.tool || 'outline';
+    // drive the engine through its label model: selecting a label arms the matching tool (outline = polygon, box = rectangle)
+    const ann = S.store?.annotationStore?.selected;
+    const want = S.tool === 'box' ? 'rectanglelabels' : 'polygonlabels';
+    ['polygonlabels', 'rectanglelabels'].forEach((cname) => {
+      const ctrl = ann?.names?.get?.(cname);
+      (ctrl?.children || []).forEach((lab) => {
+        const on = cname === want && lab.value === name;
+        if (!!lab.selected !== on) { try { lab.toggleSelected(); } catch (e) { /* ignore */ } }
+      });
     });
-    const tool = ann?.names?.get?.('polygonlabels');
-    try { S.engine?.annotationStore?.selected?.toolsManager?.selectTool?.(tool?.tool || null, true); } catch (e) { /* engine keeps its own tool */ }
-    document.getElementById('hint').textContent = `${cap(name)}: click each corner, double-click to finish. Shift-drag for a box.`;
+    const hint = document.getElementById('hint');
+    if (hint) hint.textContent = S.tool === 'box' ? `${cap(name)}: drag a box around it.` : `${cap(name)}: click each corner, then click the first point to close.`;
     drawList();
+  }
+
+  function setTool(t) {
+    S.tool = t;
+    document.querySelectorAll('#tooltoggle button').forEach((b) => b.classList.toggle('on', b.dataset.t === t));
+    if (S.active) pick(S.active);
   }
 
   function boot(d, initial, fromPrediction) {
     const el = document.getElementById('engine');
     el.replaceChildren();
-    const task = { id: d.task.id, data: d.task.data, annotations: initial ? [{ id: 'k1', result: initial }] : [], predictions: [] };
+    const task = { id: d.task.id, data: d.task.data, annotations: [{ id: 1, result: initial || [] }], predictions: [] };
     S.fromPrediction = fromPrediction || null;
-    S.engine = new window.LabelStudio(el, {
+    S.engine = window.__kaEngine = new window.LabelStudio(el, {
       config: d.config, task, user: { id: d.user.id, pk: d.user.id, firstName: d.user.email.split('@')[0], email: d.user.email },
-      interfaces: ['side-column', 'edit-history'],
+      interfaces: ['edit-history'],
       onLabelStudioLoad(ls) {
-        if (!ls.annotationStore.annotations.length) {
-          const a = ls.annotationStore.addAnnotation({ userGenerate: true });
-          ls.annotationStore.selectAnnotation(a.id);
-        }
+        S.store = window.__kaStore = ls;
+        setTimeout(() => {
+          const st = ls.annotationStore;
+          const saved = st.annotations.find((a) => (a.serializeAnnotation?.() || []).length) || st.annotations[0];
+          if (saved) st.selectAnnotation(saved.id);
+          else st.selectAnnotation(st.addAnnotation({ userGenerate: true }).id);
+          drawList();
+        }, 0);
         setTimeout(() => { if (S.classes[0]) pick(S.active || S.classes[0].name); }, 200);
       },
     });
@@ -98,7 +120,7 @@
   }
 
   async function save() {
-    const ann = S.engine?.annotationStore?.selected;
+    const ann = S.store?.annotationStore?.selected;
     if (!ann) return;
     const result = ann.serializeAnnotation();
     const btn = document.getElementById('save');
@@ -127,7 +149,7 @@
   }
 
   function startFromSuggestions(pred) {
-    const mine = S.engine?.annotationStore?.selected?.serializeAnnotation() || [];
+    const mine = S.store?.annotationStore?.selected?.serializeAnnotation() || [];
     const ids = new Set(mine.map((r) => r.id));
     const merged = mine.concat((pred.result || []).filter((r) => !ids.has(r.id)));
     boot(S.data, merged, pred.id);
@@ -137,7 +159,8 @@
   document.addEventListener('keydown', (e) => {
     if (['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement?.tagName)) return;
     if ((e.ctrlKey || e.metaKey) && e.key === 's') { e.preventDefault(); save(); }
-    if (/^[1-9]$/.test(e.key) && S.classes?.[Number(e.key) - 1] && !e.ctrlKey && !e.metaKey) { pick(S.classes[Number(e.key) - 1].name); }
+    if (e.key === 'o' || e.key === 'b') { setTool(e.key === 'b' ? 'box' : 'outline'); return; }
+    if (/^[1-9]$/.test(e.key) && S.order?.[Number(e.key) - 1] && !e.ctrlKey && !e.metaKey) { pick(S.order[Number(e.key) - 1].name); }
   });
   window.addEventListener('beforeunload', (e) => { if (S.dirty) { e.preventDefault(); e.returnValue = ''; } });
 

@@ -341,3 +341,9 @@ kbd { font: 400 11px var(--mono); padding: 2px 6px; border: 1px solid var(--rule
 .choice.on .radio { border: 5px solid var(--scan); }
 .top { background: var(--card); }
 .strip { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: auto; padding-top: 16px; border-top: 1px dashed var(--line-2); font-size: 14px; }
+/* embedded engine: our panel drives labels; hide its label chip rows and keep the drawing full-bleed */
+#engine .lsf-labels { display: none !important; }
+#engine, #engine .lsf-editor, #engine .lsf-wrapper, #engine .lsf-main-content { height: 100%; }
+#engine .lsf-main-view { background: var(--stage); }
+.canvas-side .cond { min-height: 46px; }
+.canvas-side .cond kbd { margin-left: 8px; }

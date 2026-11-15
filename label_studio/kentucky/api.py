@@ -6,6 +6,7 @@ import time
 from decimal import Decimal
 
 from django.db import transaction
+from django.db.models import Count
 from django.utils import timezone
 from django.utils.text import slugify
 from rest_framework import status
@@ -869,6 +870,7 @@ def sheet_markup(request, pk):
                      'task': {'id': s.ls_task_id, 'data': {'image': sheet_image_url(s)}},
                      'annotation': {'id': ann.id, 'result': ann.result} if ann else None, 'predictions': preds,
                      'pending_suggestions': pending,
+                     'dataset_counts': {r['label']: r['n'] for r in CanonicalObject.objects.filter(dataset=s.dataset, deleted=False).values('label').annotate(n=Count('id'))},
                      'classes': [c for c in tax.classes if c['kind'] == 'cv'],
                      'user': {'id': request.user.id, 'email': request.user.email}})
 
