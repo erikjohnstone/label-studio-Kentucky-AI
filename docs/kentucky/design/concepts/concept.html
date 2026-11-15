@@ -1,0 +1,250 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Review · Kentucky AI</title>
+<link rel="stylesheet" href="fonts/fonts.css">
+<style>
+:root{
+  --bg:#0a0c0e; --s1:#101316; --s2:#161a1e; --s3:#1d2227;
+  --line:rgba(255,255,255,.07); --line2:rgba(255,255,255,.12);
+  --t1:#f2f5f6; --t2:#c4ccd3; --t3:#8a939c; --t4:#5d656d;
+  --cy:#62d4dc; --cy-ink:#03262a; --cy-m:rgba(98,212,220,.12);
+  --wall:#62d4dc; --door:#f0b24a; --win:#9db1ff; --warn:#f0b429; --ok:#4cc38a;
+  --mono:'Space Mono',ui-monospace,monospace; --sans:'Inter Tight',system-ui,sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;background:var(--bg);color:var(--t1);font:14px/1.5 var(--sans);letter-spacing:-.01em;overflow:hidden;-webkit-font-smoothing:antialiased}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+.mono{font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--t4)}
+kbd{font:600 10.5px/1 var(--mono);color:var(--t3);border:1px solid var(--line2);border-bottom-width:2px;border-radius:4px;padding:3px 5px;min-width:19px;text-align:center;display:inline-block}
+
+.app{display:grid;grid-template-columns:1fr 368px;grid-template-rows:56px 1fr 84px;height:100vh}
+
+/* top bar */
+.top{grid-column:1/-1;display:flex;align-items:center;gap:14px;padding:0 16px 0 14px;border-bottom:1px solid var(--line);background:var(--bg);position:relative;z-index:3}
+.mark{width:30px;height:30px;display:grid;place-items:center;border-radius:8px;border:1px solid var(--line2)}
+.mark svg{width:20px}
+.back{width:30px;height:30px;border-radius:8px;display:grid;place-items:center;color:var(--t3);border:1px solid var(--line)}
+.crumb{display:flex;flex-direction:column;line-height:1.2}
+.crumb b{font-weight:600;font-size:14.5px;letter-spacing:-.015em}
+.crumb span{font-size:12px;color:var(--t3)}
+.sheetchip{display:flex;align-items:center;gap:8px;height:30px;padding:0 10px;border:1px solid var(--line);border-radius:8px;font:12px var(--mono);color:var(--t2)}
+.sheetchip i{width:1px;height:14px;background:var(--line2)}
+.seg{position:absolute;left:calc((100% - 368px)/2);transform:translateX(-50%);display:flex;padding:3px;border:1px solid var(--line);border-radius:10px;background:var(--s1)}
+.seg button{height:28px;padding:0 14px;border-radius:7px;color:var(--t3);font-weight:500;font-size:13px;display:flex;align-items:center;gap:8px}
+.seg button.on{background:var(--s3);color:var(--t1);box-shadow:inset 0 0 0 1px var(--line2)}
+.seg .n{font:11px var(--mono);color:var(--cy)}
+.grow{flex:1}
+.saved{display:flex;align-items:center;gap:7px;font-size:12.5px;color:var(--t3)}
+.saved::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--ok);box-shadow:0 0 0 3px rgba(76,195,138,.15)}
+.qbtn{width:30px;height:30px;border-radius:8px;border:1px solid var(--line);color:var(--t3);font-weight:600}
+.primary{height:34px;padding:0 14px 0 16px;border-radius:8px;background:var(--cy);color:var(--cy-ink);font-weight:600;font-size:13.5px;display:flex;align-items:center;gap:10px;box-shadow:inset 0 1px 0 rgba(255,255,255,.35),0 0 0 1px rgba(98,212,220,.5),0 0 24px rgba(98,212,220,.18)}
+.primary kbd{color:var(--cy-ink);border-color:rgba(3,38,42,.3);background:rgba(255,255,255,.15)}
+
+/* canvas */
+.stage{position:relative;overflow:hidden;background:
+  linear-gradient(rgba(98,212,220,.045) 1px,transparent 1px) 0 0/24px 24px,
+  linear-gradient(90deg,rgba(98,212,220,.045) 1px,transparent 1px) 0 0/24px 24px,
+  linear-gradient(rgba(98,212,220,.06) 1px,transparent 1px) 0 0/120px 120px,
+  linear-gradient(90deg,rgba(98,212,220,.06) 1px,transparent 1px) 0 0/120px 120px,
+  radial-gradient(900px 600px at 40% 30%,#0f1316,#0a0c0e 70%)}
+.stage svg.plan{position:absolute;inset:0;width:100%;height:100%}
+.planimg{filter:invert(1);mix-blend-mode:screen;opacity:.42}
+.tag{position:absolute;display:flex;align-items:center;gap:8px;padding:5px 9px 5px 7px;border-radius:7px;background:rgba(16,19,22,.92);border:1px solid rgba(240,178,74,.45);font:11px var(--mono);letter-spacing:.06em;color:var(--t1);backdrop-filter:blur(8px);white-space:nowrap}
+.tag .sw{width:9px;height:9px;border-radius:2px;background:var(--door)}
+.tag em{font-style:normal;color:var(--warn)}
+.legend{position:absolute;left:16px;top:16px;display:flex;gap:6px}
+.legend span{display:flex;align-items:center;gap:7px;height:28px;padding:0 10px;border-radius:8px;background:rgba(16,19,22,.85);border:1px solid var(--line);font-size:12.5px;color:var(--t2);backdrop-filter:blur(8px)}
+.legend b{font:11px var(--mono);color:var(--t4);font-weight:400}
+.zoom{position:absolute;right:16px;top:16px;display:flex;align-items:center;height:28px;border-radius:8px;background:rgba(16,19,22,.85);border:1px solid var(--line);font:11px var(--mono);color:var(--t3)}
+.zoom button{width:28px;height:26px;color:var(--t3)}
+.zoom span{padding:0 4px}
+
+/* floating toolbar */
+.tools{position:absolute;left:50%;bottom:18px;transform:translateX(-50%);display:flex;align-items:center;gap:2px;padding:5px;border-radius:14px;background:rgba(20,24,28,.94);border:1px solid var(--line2);backdrop-filter:blur(30px);box-shadow:0 0 0 .5px #000c,0 4px 8px #0006,0 16px 40px #000c}
+.tool{display:flex;flex-direction:column;align-items:center;gap:3px;width:62px;padding:7px 0 6px;border-radius:9px;color:var(--t3);font-size:11.5px;font-weight:500}
+.tool svg{width:19px;height:19px;stroke:currentColor;fill:none;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+.tool .k{font:9.5px var(--mono);color:var(--t4)}
+.tool.on{background:var(--cy-m);color:var(--cy);box-shadow:inset 0 0 0 1px rgba(98,212,220,.35)}
+.tool.on .k{color:var(--cy)}
+.tools .div{width:1px;height:36px;background:var(--line2);margin:0 5px}
+.ai{display:flex;align-items:center;gap:8px;height:44px;padding:0 14px;border-radius:9px;color:var(--t1);font-weight:600;font-size:13px;background:linear-gradient(180deg,rgba(98,212,220,.10),rgba(98,212,220,.03));box-shadow:inset 0 0 0 1px rgba(98,212,220,.25)}
+.ai svg{width:16px;fill:var(--cy)}
+
+/* right panel */
+.panel{grid-row:2/4;grid-column:2;border-left:1px solid var(--line);background:var(--s1);display:flex;flex-direction:column;min-height:0}
+.ph{padding:22px 22px 18px;border-bottom:1px solid var(--line)}
+.ph .row{display:flex;justify-content:space-between}
+.h{margin-top:12px;font-size:28px;line-height:1.1;letter-spacing:-.028em;font-weight:600}
+.h span{color:var(--t3)}
+.bar{margin-top:16px;height:6px;border-radius:3px;background:var(--s3);display:flex;overflow:hidden;gap:2px}
+.bar i{display:block;height:100%}
+.barlbl{margin-top:9px;display:flex;justify-content:space-between}
+.card{margin:18px 22px 0;border:1px solid var(--line2);border-radius:14px;background:var(--s2);overflow:hidden}
+.crop{height:176px;position:relative;background:
+  linear-gradient(rgba(98,212,220,.05) 1px,transparent 1px) 0 0/16px 16px,
+  linear-gradient(90deg,rgba(98,212,220,.05) 1px,transparent 1px) 0 0/16px 16px,#0c0f11;border-bottom:1px solid var(--line)}
+.crop svg{width:100%;height:100%;display:block}
+.crop .mono{position:absolute;left:10px;bottom:9px;padding:3px 7px;border-radius:5px;background:rgba(12,15,17,.88);font-size:10px}
+.crop .idx{position:absolute;right:12px;top:10px}
+.cb{padding:14px 16px 16px}
+.what{display:flex;align-items:center;gap:10px}
+.what .sw{width:22px;height:22px;border-radius:6px;background:rgba(240,178,74,.14);box-shadow:inset 0 0 0 1px rgba(240,178,74,.6);display:grid;place-items:center}
+.what b{font-size:19px;letter-spacing:-.02em;font-weight:600}
+.conf{margin-left:auto;display:flex;align-items:center;gap:6px;height:24px;padding:0 9px;border-radius:6px;background:rgba(240,180,41,.12);color:var(--warn);font-size:12px;font-weight:500}
+.sub{margin-top:6px;color:var(--t3);font-size:13px}
+.acts{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:14px}
+.keep,.dis{height:44px;border-radius:10px;display:flex;align-items:center;justify-content:center;gap:10px;font-weight:600;font-size:14.5px}
+.keep{background:var(--cy);color:var(--cy-ink);box-shadow:inset 0 1px 0 rgba(255,255,255,.35),0 0 20px rgba(98,212,220,.15)}
+.keep kbd{color:var(--cy-ink);border-color:rgba(3,38,42,.3);background:rgba(255,255,255,.15)}
+.dis{border:1px solid var(--line2);color:var(--t2)}
+.swap{margin-top:12px;display:flex;align-items:center;gap:6px;font-size:12.5px;color:var(--t3)}
+.swap button{display:flex;align-items:center;gap:6px;height:26px;padding:0 8px;border-radius:6px;border:1px solid var(--line);color:var(--t2);font-size:12.5px}
+.swap kbd{padding:2px 4px;font-size:9.5px;min-width:0}
+.sec{padding:20px 22px 0}
+.layer{display:flex;align-items:center;gap:12px;height:44px;padding:0 10px 0 12px;margin:0 -12px;border-radius:9px}
+.layer.on{background:rgba(255,255,255,.035)}
+.layer .nm{font-weight:500;font-size:14px}
+.layer .st{margin-left:auto;font:11.5px var(--mono);color:var(--t3);letter-spacing:.02em}
+.layer .st.done{color:var(--ok)}
+.layer .eye{width:16px;color:var(--t4);stroke:currentColor;fill:none;stroke-width:1.6}
+.pat{width:26px;height:16px;border-radius:4px;flex:none}
+.foot{margin-top:auto;padding:16px 22px;border-top:1px solid var(--line);display:flex;gap:12px;align-items:flex-start;color:var(--t3);font-size:12.5px;line-height:1.5}
+.foot svg{flex:none;width:16px;margin-top:2px;stroke:var(--cy);fill:none;stroke-width:1.6}
+
+/* filmstrip */
+.film{grid-column:1;border-top:1px solid var(--line);background:var(--bg);display:flex;align-items:center;gap:14px;padding:0 16px}
+.thumbs{display:flex;gap:8px}
+.th{position:relative;width:76px;height:58px;border-radius:8px;border:1px solid var(--line);background:#0c0f11;display:grid;place-items:center;overflow:hidden}
+.th img{max-width:84%;max-height:84%;filter:invert(1);mix-blend-mode:screen;opacity:.75}
+.th.on{border-color:var(--cy);box-shadow:0 0 0 3px rgba(98,212,220,.15)}
+.th .d{position:absolute;right:5px;top:5px;width:7px;height:7px;border-radius:50%}
+.th .no{position:absolute;left:6px;bottom:3px;font:9.5px var(--mono);color:var(--t3)}
+.totals{margin-left:auto;display:flex;gap:0;height:52px;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.totals div{padding:7px 18px 0;border-right:1px solid var(--line);min-width:96px}
+.totals div:last-child{border-right:0}
+.totals b{display:block;font:600 20px/1.1 var(--sans);letter-spacing:-.02em}
+.totals .mono{font-size:9.5px}
+</style></head>
+<body>
+<div class="app">
+  <header class="top">
+    <a class="back" title="Back">←</a>
+    <div class="mark"><svg viewBox="0 0 64 32"><defs><pattern id="scan" width="4" height="4" patternUnits="userSpaceOnUse"><rect width="4" height="2.6" fill="#62d4dc"/></pattern></defs><path d="M4 30 L18 6 H30 L16 30 Z M22 30 L36 6 H62 L58 14 H45 L36 30 Z" fill="url(#scan)"/></svg></div>
+    <div class="crumb"><b>Riverside Medical — Level 1</b><span>Plan set · 7 sheets</span></div>
+    <div class="sheetchip">A-102<i></i>FLOOR PLAN</div>
+    <div class="seg"><button class="on">Review AI <span class="n">27</span></button><button>Draw</button></div>
+    <div class="grow"></div>
+    <span class="saved">Saved</span>
+    <button class="qbtn" title="Keyboard shortcuts">?</button>
+    <button class="primary">Done · Next sheet <kbd>↵</kbd></button>
+  </header>
+
+  <section class="stage" id="stage">
+    <svg class="plan" id="plan"></svg>
+    <div class="legend">
+      <span><i class="pat" style="background:rgba(98,212,220,.18);box-shadow:inset 0 0 0 1.5px #62d4dc"></i>Walls <b>62</b></span>
+      <span><i class="pat" style="background:rgba(240,178,74,.16);box-shadow:inset 0 0 0 1.5px #f0b24a"></i>Doors <b>18</b></span>
+      <span><i class="pat" style="background:repeating-linear-gradient(90deg,transparent 0 5px,rgba(157,177,255,.5) 5px 6px);box-shadow:inset 0 0 0 1.5px #9db1ff"></i>Windows <b>14</b></span>
+      <span style="color:var(--t3)"><svg width="14" viewBox="0 0 14 14"><rect x="1" y="1" width="12" height="12" rx="2" fill="none" stroke="#8a939c" stroke-dasharray="2.5 2"/></svg>Dashed = not checked yet</span>
+    </div>
+    <div class="zoom"><button>−</button><span>100%</span><button>+</button><button style="border-left:1px solid var(--line);width:34px">FIT</button></div>
+    <div class="tag" id="tag"><span class="sw"></span>DOOR · <em>62% SURE</em></div>
+    <div class="tools">
+      <button class="tool on"><svg viewBox="0 0 24 24"><path d="M5 3l14 8-6 2-3 6z"/></svg>Select<span class="k">V</span></button>
+      <button class="tool"><svg viewBox="0 0 24 24"><rect x="3" y="9" width="18" height="6"/></svg>Wall<span class="k">W</span></button>
+      <button class="tool"><svg viewBox="0 0 24 24"><path d="M5 20V5M5 5a14 14 0 0 1 14 14H5"/></svg>Door<span class="k">O</span></button>
+      <button class="tool"><svg viewBox="0 0 24 24"><rect x="3" y="8" width="18" height="8"/><path d="M3 12h18"/></svg>Window<span class="k">N</span></button>
+      <button class="tool"><svg viewBox="0 0 24 24"><path d="M8 11V5.5a1.5 1.5 0 0 1 3 0V10m0-5.5a1.5 1.5 0 0 1 3 0V10m0-3.5a1.5 1.5 0 0 1 3 0V14a6 6 0 0 1-6 6h-1a6 6 0 0 1-5-2.7L3.6 14a1.5 1.5 0 0 1 2.4-1.8L8 14"/></svg>Pan<span class="k">H</span></button>
+      <span class="div"></span>
+      <button class="ai"><svg viewBox="0 0 24 24"><path d="M12 2l2.2 6.6L21 11l-6.8 2.4L12 20l-2.2-6.6L3 11l6.8-2.4z"/></svg>Find more with AI</button>
+    </div>
+  </section>
+
+  <aside class="panel">
+    <div class="ph">
+      <div class="row"><span class="mono">AI review</span><span class="mono">[ Sheet 02 / 07 ]</span></div>
+      <div class="h">AI found 94 items.<br><span>27 left to check.</span></div>
+      <div class="bar"><i style="width:66%;background:var(--cy)"></i><i style="width:5%;background:#3a4249"></i></div>
+      <div class="barlbl"><span class="mono" style="color:var(--t3)">62 kept · 5 dismissed</span><span class="mono" style="color:var(--cy)">71%</span></div>
+    </div>
+
+    <div class="card">
+      <div class="crop"><svg id="crop"></svg><span class="mono">Door between Office 110 &amp; Elec 106</span></div>
+      <div class="cb">
+        <div class="what"><span class="sw"><svg width="12" viewBox="0 0 12 12"><path d="M2 11V2a9 9 0 0 1 9 9z" fill="none" stroke="#f0b24a" stroke-width="1.4"/></svg></span><b>Door</b><span class="conf">62% sure · look closely</span></div>
+        <div class="sub">Is the orange outline a door? Keep it if it's right.</div>
+        <div class="acts"><button class="keep">Keep <kbd>K</kbd></button><button class="dis">Not a door <kbd>D</kbd></button></div>
+        <div class="swap">It's actually a <button>Window <kbd>N</kbd></button><button>Wall <kbd>W</kbd></button></div>
+      </div>
+    </div>
+
+    <div class="sec">
+      <div class="mono" style="margin-bottom:6px">On this sheet</div>
+      <div class="layer"><i class="pat" style="background:rgba(98,212,220,.18);box-shadow:inset 0 0 0 1.5px #62d4dc"></i><span class="nm">Walls</span><span class="st done">✓ 62 checked</span><svg class="eye" viewBox="0 0 24 24"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg></div>
+      <div class="layer on"><i class="pat" style="background:rgba(240,178,74,.16);box-shadow:inset 0 0 0 1.5px #f0b24a"></i><span class="nm">Doors</span><span class="st">13 of 18 left</span><svg class="eye" viewBox="0 0 24 24"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg></div>
+      <div class="layer"><i class="pat" style="background:repeating-linear-gradient(90deg,transparent 0 5px,rgba(157,177,255,.5) 5px 6px);box-shadow:inset 0 0 0 1.5px #9db1ff"></i><span class="nm">Windows</span><span class="st">14 of 14 left</span><svg class="eye" viewBox="0 0 24 24"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg></div>
+    </div>
+
+    <div class="foot"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg><span>Everything you keep teaches your model. Anything you dismiss, it learns to ignore.</span></div>
+  </aside>
+
+  <footer class="film">
+    <div class="thumbs" id="thumbs"></div>
+    <div class="totals">
+      <div><b>62</b><span class="mono">Walls</span></div>
+      <div><b>18</b><span class="mono">Doors</span></div>
+      <div><b>14</b><span class="mono">Windows</span></div>
+      <div><b style="color:var(--cy)">4 / 7</b><span class="mono">Sheets done</span></div>
+    </div>
+  </footer>
+</div>
+<script src="data.js"></script>
+<script>
+const NS='http://www.w3.org/2000/svg', W=1855, H=2400;
+const col={wall:'#62d4dc',door:'#f0b24a',window:'#9db1ff'};
+const CUR='rd6';
+const doorOrder=ITEMS.filter(i=>i.c==='door').map(i=>i.id);
+const state=i=>{ if(i.id===CUR) return 'cur'; if(i.c==='wall') return 'kept';
+  if(i.c==='door') return doorOrder.indexOf(i.id)<5?'kept':'todo'; return 'todo'; };
+function el(n,a,p){const e=document.createElementNS(NS,n);for(const k in a)e.setAttribute(k,a[k]);p&&p.appendChild(e);return e}
+function draw(svg,vb,opts){
+  svg.setAttribute('viewBox',vb.join(' '));svg.setAttribute('preserveAspectRatio','xMidYMid meet');
+  const defs=el('defs',{},svg);
+  const pt=el('pattern',{id:'win'+opts.k,width:10,height:10,patternUnits:'userSpaceOnUse'},defs);
+  el('path',{d:'M0 5H10',stroke:'rgba(157,177,255,.55)','stroke-width':2},pt);
+  // sheet frame with corner ticks
+  if(opts.frame){el('rect',{x:-30,y:-30,width:W+60,height:H+60,fill:'rgba(255,255,255,.012)',stroke:'rgba(255,255,255,.08)','stroke-width':2},svg);
+    [[-30,-30,1,1],[W+30,-30,-1,1],[-30,H+30,1,-1],[W+30,H+30,-1,-1]].forEach(([x,y,sx,sy])=>el('path',{d:`M${x} ${y+sy*70}V${y}H${x+sx*70}`,stroke:'#62d4dc','stroke-width':4,fill:'none',opacity:.8},svg));
+    const tb=el('g',{},svg); el('text',{x:-30,y:-62,fill:'#5d656d','font-family':'Space Mono','font-size':30,'letter-spacing':4},tb).textContent='A-102 · LEVEL 1 FLOOR PLAN · 1855 × 2400 PX';}
+  el('image',{href:'s6.png',x:0,y:0,width:W,height:H,class:'planimg'},svg);
+  const sw=opts.sw;
+  ITEMS.forEach(i=>{const s=state(i);const pts=i.p.map(q=>q.join(',')).join(' ');
+    const c=col[i.c];const a={points:pts,stroke:c,'stroke-width':s==='cur'?sw*1.8:sw,'stroke-linejoin':'round',
+      fill:i.c==='window'?`url(#win${opts.k})`:c,'fill-opacity':i.c==='window'?1:(s==='kept'?.2:.1)};
+    if(s==='todo'){a['stroke-dasharray']=`${sw*3} ${sw*2.2}`;a['stroke-opacity']=.85}
+    if(s==='kept'&&i.c==='wall'){a['stroke-opacity']=.9}
+    const e=el('polygon',a,svg); if(s==='cur') e.setAttribute('filter','drop-shadow(0 0 10px rgba(240,178,74,.8))');
+  });
+}
+// main canvas: auto-zoomed around current door
+const cur=ITEMS.find(i=>i.id===CUR);const xs=cur.p.map(p=>p[0]),ys=cur.p.map(p=>p[1]);
+const cx=(Math.min(...xs)+Math.max(...xs))/2, cy=(Math.min(...ys)+Math.max(...ys))/2;
+const stage=document.getElementById('stage').getBoundingClientRect();
+const scale=0.47, vw=stage.width/scale, vh=stage.height/scale;
+const vx=Math.min(Math.max(cx-vw*0.5,-140),W+140-vw), vy=cy-vh*0.47;
+const plan=document.getElementById('plan');draw(plan,[vx,vy,vw,vh],{k:'a',sw:3.2,frame:true});
+// spotlight
+const r=170;
+const m=el('mask',{id:'spot'},plan.querySelector('defs'));el('rect',{x:vx,y:vy,width:vw,height:vh,fill:'#fff'},m);el('circle',{cx,cy,r,fill:'#000'},m);
+el('rect',{x:vx,y:vy,width:vw,height:vh,fill:'rgba(6,8,9,.45)',mask:'url(#spot)'},plan);
+el('circle',{cx,cy,r,fill:'none',stroke:'rgba(240,178,74,.55)','stroke-width':2},plan);
+el('circle',{cx,cy,r:r+16,fill:'none',stroke:'rgba(240,178,74,.18)','stroke-width':1.5,'stroke-dasharray':'6 8'},plan);
+// tag position
+const tag=document.getElementById('tag');tag.style.left=((cx+r*0.78-vx)*scale+10)+'px';tag.style.top=((cy-r*0.78-vy)*scale-18)+'px';
+// crop
+const pad=150;draw(document.getElementById('crop'),[cx-pad*2.1,cy-pad,pad*4.2,pad*2],{k:'b',sw:2.2,frame:false});
+// thumbs
+const sheets=[[5,'ok'],[6,'cur'],[7,'ok'],[8,'ok'],[9,'ok'],[10,'todo'],[11,'todo']];
+const dot={ok:'#4cc38a',cur:'#62d4dc',todo:'#3a4249'};
+document.getElementById('thumbs').innerHTML=sheets.map(([n,s],i)=>`<div class="th ${s==='cur'?'on':''}"><img src="t${n}.png"><span class="d" style="background:${dot[s]}"></span><span class="no">A-10${i+1}</span></div>`).join('');
+</script>
+</body></html>

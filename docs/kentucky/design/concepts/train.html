@@ -1,0 +1,115 @@
+<!doctype html><html><head><meta charset="utf-8"><title>Train · Kentucky AI</title><link rel="stylesheet" href="light.css">
+<style>
+.wrap{display:grid;grid-template-columns:1fr 400px;gap:24px;height:100%}
+.step{margin-top:26px}
+.sl{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+.sl .n{width:22px;height:22px;border-radius:6px;background:var(--ink);color:var(--cy);font:600 11px var(--mono);display:grid;place-items:center}
+.sl b{font-size:15px;letter-spacing:-.02em}
+.what{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+.cls{position:relative;padding:8px;border-radius:13px;background:var(--s1);border:1px solid var(--line);text-align:left}
+.cls.on{border-color:rgba(14,143,153,.55);box-shadow:0 0 0 3px rgba(98,212,220,.22)}
+.cls .pv{height:110px;border-radius:9px}
+.cls .pv svg{position:absolute;inset:0;width:100%;height:100%}
+.cls .nm{display:flex;align-items:center;justify-content:space-between;margin:11px 6px 2px;font-weight:600;font-size:14.5px}
+.cls .ck{width:18px;height:18px;border-radius:5px;border:1.5px solid var(--line2);display:grid;place-items:center;font-size:11px}
+.cls.on .ck{background:var(--ink);border-color:var(--ink);color:var(--cy)}
+.cls .ex{margin:0 6px 4px;font-size:12.5px;color:var(--t3)}
+.cls.off{opacity:.55}
+.cls .bar{margin:8px 6px 4px;height:3px;border-radius:2px;background:var(--s3);overflow:hidden}
+.cls .bar i{display:block;height:100%;background:var(--cy-d)}
+.speed{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.sp{padding:16px 18px;border-radius:13px;background:var(--s1);border:1px solid var(--line);text-align:left;position:relative}
+.sp.on{border-color:rgba(14,143,153,.55);box-shadow:0 0 0 3px rgba(98,212,220,.22)}
+.sp .tt{font-weight:600;font-size:15px;letter-spacing:-.02em;display:flex;align-items:center;gap:8px}
+.sp .d{color:var(--t3);font-size:12.5px;margin-top:3px;height:38px}
+.sp .tt{height:22px}
+.sp .nums{display:flex;gap:18px;margin-top:12px;padding-top:12px;border-top:1px solid var(--line)}
+.sp .nums b{display:block;font-size:17px;letter-spacing:-.02em;white-space:nowrap}
+.sp .gauge{display:flex;gap:3px;margin-top:2px}
+.sp .gauge i{width:16px;height:4px;border-radius:2px;background:var(--s3)}
+.sp .gauge i.f{background:var(--cy-d)}
+.side2{display:flex;flex-direction:column;padding:26px 26px 24px}
+.side2 .t{font-size:26px;line-height:1.1;letter-spacing:-.033em;font-weight:600;margin-top:12px}
+.side2 .t span{color:#6b747a}
+.chk{margin-top:22px;display:flex;flex-direction:column;gap:2px}
+.ci{display:flex;gap:12px;padding:11px 0;border-bottom:1px solid rgba(255,255,255,.06);font-size:13.5px;color:#c4ccd3}
+.ci .i{flex:none;width:20px;height:20px;border-radius:50%;display:grid;place-items:center;font-size:11px;font-weight:700;margin-top:1px}
+.ci .i.ok{background:rgba(76,195,138,.15);color:#4cc38a}
+.ci .i.w{background:rgba(240,180,41,.15);color:#f0b429}
+.ci small{display:block;color:#6b747a;font-size:12px;margin-top:1px}
+.est{margin-top:auto;display:grid;grid-template-columns:1fr 1fr 1fr;border:1px solid rgba(255,255,255,.08);border-radius:11px;overflow:hidden}
+.est div{padding:11px 14px;border-right:1px solid rgba(255,255,255,.08)}
+.est div:last-child{border:0}
+.est b{display:block;font-size:19px;letter-spacing:-.02em;color:#f2f5f6}
+.go{margin-top:14px;width:100%;justify-content:center}
+.fine{text-align:center;margin-top:10px;font-size:12px;color:#6b747a}
+.hist{display:flex;align-items:center;gap:22px;padding:18px 26px;height:170px}
+.hv{flex:none;white-space:nowrap}
+.hv b{display:block;font-size:40px;letter-spacing:-.035em;font-weight:600;line-height:1.1;margin-top:4px}
+.hv small{color:var(--t3);font-size:12px}
+.hv.next b{color:var(--cy-d)}
+.arrow{width:26px;height:1px;background:var(--line2);position:relative}
+.arrow::after{content:"";position:absolute;right:0;top:-3px;border:3.5px solid transparent;border-left-color:var(--t4);border-right:0}
+.spark{margin-left:auto;width:280px;height:70px;overflow:visible}
+.what .pv{height:110px}
+</style></head><body>
+<div class="shell"><aside class="side" id="side"></aside>
+<div class="main">
+  <div class="top"><div class="crumbs">Plan sets <span>/</span> Riverside Medical — L1 <span>/</span> <b>Train</b></div></div>
+  <div class="body">
+  <div class="wrap">
+    <div>
+      <div class="h1">Teach your model.<br><span>It learns from the sheets you checked.</span></div>
+
+      <div class="step"><div class="sl"><span class="n">1</span><b>What should it find?</b><span class="mono" style="margin-left:auto">From 4 checked sheets</span></div>
+        <div class="what">
+          <button class="cls on"><div class="pv dark"><svg id="c1"></svg></div><div class="nm">Walls<span class="ck">✓</span></div><div class="ex">296 examples · plenty</div><div class="bar"><i style="width:100%"></i></div></button>
+          <button class="cls on"><div class="pv dark"><svg id="c2"></svg></div><div class="nm">Doors<span class="ck">✓</span></div><div class="ex">75 examples · plenty</div><div class="bar"><i style="width:100%"></i></div></button>
+          <button class="cls on"><div class="pv dark"><svg id="c3"></svg></div><div class="nm">Windows<span class="ck">✓</span></div><div class="ex">68 examples · plenty</div><div class="bar"><i style="width:100%"></i></div></button>
+          <button class="cls off"><div class="pv dark" style="display:grid;place-items:center"><span class="mono">Not enough yet</span></div><div class="nm">Rooms<span class="ck"></span></div><div class="ex">12 examples · need 30</div><div class="bar"><i style="width:40%;background:var(--t4)"></i></div></button>
+        </div>
+      </div>
+
+      <div class="step"><div class="sl"><span class="n">2</span><b>How careful should it be?</b></div>
+        <div class="speed">
+          <button class="sp"><div class="tt">Quick look</div><div class="d">A fast first try. Good for checking you're on track.</div><div class="nums"><div><b>~6 min</b><span class="mono">Time</span></div><div><b>Free</b><span class="mono">Cost</span></div><div><div class="gauge"><i class="f"></i><i></i><i></i></div><span class="mono">Accuracy</span></div></div></button>
+          <button class="sp on"><div class="tt">Standard <span class="pill cy">Recommended</span></div><div class="d">The best balance. What most contractors use.</div><div class="nums"><div><b>~18 min</b><span class="mono">Time</span></div><div><b>Free</b><span class="mono">Cost</span></div><div><div class="gauge"><i class="f"></i><i class="f"></i><i></i></div><span class="mono">Accuracy</span></div></div></button>
+          <button class="sp"><div class="tt">Most accurate</div><div class="d">Longer training on a faster computer.</div><div class="nums"><div><b>~45 min</b><span class="mono">Time</span></div><div><b>$2.40</b><span class="mono">Cost</span></div><div><div class="gauge"><i class="f"></i><i class="f"></i><i class="f"></i></div><span class="mono">Accuracy</span></div></div></button>
+        </div>
+      </div>
+      <div class="step"><div class="sl"><span class="n">3</span><b>How it's improving</b><span class="mono" style="margin-left:auto">Doors found on the test sheet</span></div>
+        <div class="card hist">
+          <div class="hv"><span class="mono">v1 · Oct 28</span><b>58%</b><small>2 sheets</small></div>
+          <div class="arrow"></div>
+          <div class="hv"><span class="mono">v2 · Nov 9</span><b>72%</b><small>3 sheets</small></div>
+          <div class="arrow"></div>
+          <div class="hv next"><span class="mono" style="color:var(--cy-d)">v3 · today</span><b>?</b><small>Find out in ~18 min</small></div>
+          <svg class="spark" viewBox="0 0 300 70" preserveAspectRatio="none"><path d="M0 58 L150 34" stroke="#0c1113" stroke-width="2" fill="none"/><path d="M150 34 L300 12" stroke="#0e8f99" stroke-width="2" stroke-dasharray="5 5" fill="none"/><circle cx="0" cy="58" r="4" fill="#0c1113"/><circle cx="150" cy="34" r="4" fill="#0c1113"/><circle cx="300" cy="12" r="5" fill="#62d4dc" stroke="#0e8f99" stroke-width="2"/></svg>
+        </div>
+      </div>
+    </div>
+
+    <aside class="dark ticks side2">
+      <span class="mono" style="color:var(--cy)">● Ready to train</span>
+      <div class="t">Model v3 for<br><span>Riverside Medical</span></div>
+      <div class="chk">
+        <div class="ci"><span class="i ok">✓</span><div>4 sheets checked<small>Every wall, door and window confirmed</small></div></div>
+        <div class="ci"><span class="i ok">✓</span><div>439 examples<small>Enough of each item to learn from</small></div></div>
+        <div class="ci"><span class="i ok">✓</span><div>Builds on Model v2<small>Starts from what it already knows</small></div></div>
+        <div class="ci"><span class="i w">!</span><div>3 sheets not checked yet<small>They'll be skipped — check them for a better model</small></div></div>
+      </div>
+      <div class="est"><div><b>~18 min</b><span class="mono">Time</span></div><div><b>Free</b><span class="mono">Cost</span></div><div><b>1 test</b><span class="mono">Test sheet</span></div></div>
+      <button class="btn cy lg go">Start training →</button>
+      <div class="fine">We'll test it on a sheet it has never seen and tell you how it did.</div>
+    </aside>
+  </div>
+  </div>
+</div></div>
+<script src="data.js"></script><script src="common.js"></script>
+<script>
+sidebar('plans');
+const vb=[600,550,700,500];
+plan(document.getElementById('c1'),{items:ITEMS,filter:i=>i.c==='wall',vb,par:'xMidYMid slice',sw:5,fo:.25,opacity:.4});
+plan(document.getElementById('c2'),{items:ITEMS,filter:i=>i.c==='door',vb:[500,850,700,500],par:'xMidYMid slice',sw:5,fo:.22,opacity:.4});
+plan(document.getElementById('c3'),{items:ITEMS,filter:i=>i.c==='window',vb:[40,700,700,500],par:'xMidYMid slice',sw:5,fo:.25,opacity:.4});
+</script></body></html>

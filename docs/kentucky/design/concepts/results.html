@@ -1,0 +1,88 @@
+<!doctype html><html><head><meta charset="utf-8"><title>Model v3 · Kentucky AI</title><link rel="stylesheet" href="light.css">
+<style>
+.head{display:flex;align-items:flex-end;justify-content:space-between}
+.stamp{display:inline-flex;align-items:center;gap:8px;height:26px;padding:0 10px;border-radius:7px;background:var(--ink);color:var(--cy);font:10.5px var(--mono);letter-spacing:.1em;margin-bottom:14px}
+.stamp i{width:6px;height:6px;border-radius:50%;background:var(--cy);box-shadow:0 0 8px var(--cy)}
+.grid{display:grid;grid-template-columns:1fr 380px;gap:20px;margin-top:24px;height:572px}
+.view{display:flex;flex-direction:column}
+.view svg{position:absolute;inset:0;width:100%;height:100%}
+.vtop{position:absolute;left:0;right:0;top:0;display:flex;align-items:center;gap:6px;padding:16px 18px;z-index:2}
+.lg{display:flex;align-items:center;gap:7px;height:28px;padding:0 10px;border-radius:8px;background:rgba(16,19,22,.88);border:1px solid rgba(255,255,255,.08);font-size:12.5px;color:#c4ccd3;backdrop-filter:blur(8px)}
+.lg b{font:11px var(--mono);color:#8a939c;font-weight:400}
+.seg{margin-left:auto;display:flex;padding:3px;border-radius:9px;background:rgba(16,19,22,.88);border:1px solid rgba(255,255,255,.08)}
+.seg button{height:24px;padding:0 10px;border-radius:6px;font-size:12px;color:#8a939c}
+.seg button.on{background:#1d2227;color:#f2f5f6}
+.vbot{position:absolute;left:18px;bottom:16px;right:18px;display:flex;justify-content:space-between;z-index:2}
+.vbot .mono{padding:5px 8px;border-radius:6px;background:rgba(16,19,22,.9);border:1px solid rgba(255,255,255,.08)}
+.items{display:flex;flex-direction:column;gap:12px}
+.it{padding:16px 18px}
+.it .r1{display:flex;align-items:center;gap:10px}
+.it .sw{width:12px;height:12px;border-radius:3px}
+.it .nm{font-weight:600;font-size:15px}
+.it .pc{margin-left:auto;font-size:26px;font-weight:600;letter-spacing:-.035em}
+.it .s{color:var(--t3);font-size:13px;margin-top:2px}
+.it .cmp{margin-top:12px;position:relative;height:6px;border-radius:3px;background:var(--s3)}
+.it .cmp .new{position:absolute;left:0;top:0;bottom:0;border-radius:3px;background:var(--t1)}
+.it .cmp .old{position:absolute;top:-4px;width:2px;height:14px;background:var(--t4)}
+.it .cl{display:flex;justify-content:space-between;margin-top:8px}
+.up{color:var(--ok);font:600 11px var(--mono)}
+.adv{flex:1;padding:16px 18px;display:flex;gap:12px;align-items:flex-start;background:var(--cy-m);border-color:rgba(14,143,153,.25)}
+.adv svg{flex:none;width:18px;stroke:var(--cy-d);fill:none;stroke-width:1.7;margin-top:2px}
+.adv b{font-size:14px}
+.adv p{color:var(--t2);font-size:13px;margin-top:2px}
+.foot{margin-top:16px;display:flex;align-items:center;gap:18px;color:var(--t3);font-size:12.5px}
+.foot .mono{color:var(--t4)}
+</style></head><body>
+<div class="shell"><aside class="side" id="side"></aside>
+<div class="main">
+  <div class="top"><div class="crumbs">Models <span>/</span> Riverside Medical <span>/</span> <b>Model v3</b></div></div>
+  <div class="body">
+    <div class="head">
+      <div><span class="stamp"><i></i>MODEL V3 · TESTED · NOV 15</span>
+      <div class="h1">Model v3 finds 9 of every 10 doors.<br><span>Tested on sheet A-105 — one it never saw.</span></div></div>
+      <div style="display:flex;gap:10px"><button class="btn">Try it on a new sheet</button><button class="btn cy">Use this model →</button></div>
+    </div>
+
+    <div class="grid">
+      <div class="dark ticks view">
+        <svg id="v"></svg>
+        <div class="vtop">
+          <span class="lg"><i class="dot" style="background:#62d4dc"></i>Found <b>85</b></span>
+          <span class="lg"><i class="dot" style="background:#ff6b6b"></i>Missed <b>6</b></span>
+          <span class="lg"><i class="dot" style="background:#f0b24a"></i>Extra <b>3</b></span>
+          <div class="seg"><button class="on">What it found</button><button>Your answer</button><button>Side by side</button></div>
+        </div>
+        <div class="vbot"><span class="mono">A-105 · Test sheet · not used in training</span><span class="mono" style="color:var(--cy)">Hover any item to see why</span></div>
+      </div>
+
+      <div class="items">
+        <div class="card it"><div class="r1"><i class="sw" style="background:#62d4dc"></i><span class="nm">Walls</span><span class="pc">96%</span></div>
+          <div class="s">Found 60 of 62 walls</div>
+          <div class="cmp"><i class="new" style="width:96%"></i><i class="old" style="left:88%"></i></div>
+          <div class="cl"><span class="mono">v2 was 88%</span><span class="up">▲ 8 POINTS</span></div></div>
+        <div class="card it"><div class="r1"><i class="sw" style="background:#f0b24a"></i><span class="nm">Doors</span><span class="pc">89%</span></div>
+          <div class="s">Found 16 of 18 doors</div>
+          <div class="cmp"><i class="new" style="width:89%"></i><i class="old" style="left:72%"></i></div>
+          <div class="cl"><span class="mono">v2 was 72%</span><span class="up">▲ 17 POINTS</span></div></div>
+        <div class="card it"><div class="r1"><i class="sw" style="background:#9db1ff"></i><span class="nm">Windows</span><span class="pc">71%</span></div>
+          <div class="s">Found 10 of 14 windows</div>
+          <div class="cmp"><i class="new" style="width:71%"></i><i class="old" style="left:70%"></i></div>
+          <div class="cl"><span class="mono">v2 was 70%</span><span class="mono">About the same</span></div></div>
+        <div class="card adv"><svg viewBox="0 0 24 24"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/></svg><div><b>Windows need more examples</b><p>Check 2 more sheets with windows, then train again. That usually helps the most.</p></div></div>
+      </div>
+    </div>
+    <div class="foot"><span class="mono">For engineers</span><span>mIoU 0.81 · mAP@50 0.88 · LR-ASPP MobileNetV3 · 18 min CPU</span><span style="margin-left:auto">Full report →</span></div>
+  </div>
+</div></div>
+<script src="data.js"></script><script src="common.js"></script>
+<script>
+sidebar('models');
+const missed=new Set(['rd7','rd12','rw5','rw9','rw11','rw60']);
+const ws=ITEMS.filter(i=>i.c==='window').map(i=>i.id);
+ws.slice(0,4).forEach(id=>missed.add(id));
+const svg=document.getElementById('v');
+const g=plan(svg,{items:ITEMS,vb:[-260,60,2375,1780],par:'xMidYMid meet',sw:5,fo:.18,opacity:.42,
+  color:i=>missed.has(i.id)?'#ff6b6b':'#62d4dc',dashed:i=>missed.has(i.id)});
+// extras
+[[1400,1500,120,90],[700,1200,90,90],[1180,420,100,70]].forEach(([x,y,w,h])=>el('rect',{x,y,width:w,height:h,fill:'#f0b24a','fill-opacity':.16,stroke:'#f0b24a','stroke-width':4,rx:6},svg));
+</script></body></html>

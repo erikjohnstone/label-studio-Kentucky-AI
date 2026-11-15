@@ -1,0 +1,87 @@
+<!doctype html><html><head><meta charset="utf-8"><title>Plan sets · Kentucky AI</title><link rel="stylesheet" href="light.css">
+<style>
+.head{display:flex;align-items:flex-end;justify-content:space-between}
+.hero{margin-top:24px;display:grid;grid-template-columns:1fr 1.15fr;height:312px}
+.hero .l{padding:30px 32px;display:flex;flex-direction:column;position:relative;z-index:1}
+.hero .t{font-size:30px;line-height:1.08;letter-spacing:-.035em;font-weight:600;margin-top:14px}
+.hero .t span{color:#6b747a}
+.meta{margin-top:12px;color:#8a939c;font-size:14px}
+.prog{margin-top:auto}
+.track{height:5px;border-radius:3px;background:#1d2227;overflow:hidden}
+.track i{display:block;height:100%;background:var(--cy);box-shadow:0 0 12px rgba(98,212,220,.6)}
+.pl{display:flex;justify-content:space-between;margin:9px 0 18px}
+.hero .r{position:relative;border-left:1px solid rgba(255,255,255,.06)}
+.hero .r svg{position:absolute;inset:0;width:100%;height:100%}
+.hero .glow{position:absolute;inset:0;background:radial-gradient(500px 300px at 70% 40%,rgba(98,212,220,.10),transparent 70%);pointer-events:none}
+.chip{position:absolute;display:flex;align-items:center;gap:7px;padding:5px 9px;border-radius:7px;background:rgba(16,19,22,.9);border:1px solid rgba(255,255,255,.1);font:10.5px var(--mono);letter-spacing:.06em;color:#c4ccd3;backdrop-filter:blur(8px)}
+.sec{margin:30px 0 12px;display:flex;justify-content:space-between;align-items:center}
+.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}
+.ps{overflow:hidden;display:flex;flex-direction:column}
+.ps .th{height:168px;border-radius:0;margin:6px 6px 0;border-radius:10px}
+.ps .th svg{position:absolute;inset:0;width:100%;height:100%}
+.ps .th .mono{position:absolute;left:30px;top:9px;z-index:2}
+.ps .b{padding:14px 16px 16px}
+.ps .n{font-weight:600;font-size:15px;letter-spacing:-.02em}
+.ps .m{color:var(--t3);font-size:12.5px;margin-top:2px}
+.ps .f{display:flex;align-items:center;justify-content:space-between;margin-top:14px}
+.bars{display:flex;gap:3px}
+.bars i{width:12px;height:4px;border-radius:2px;background:var(--s3)}
+.bars i.d{background:var(--t1)}
+.bars i.c{background:var(--cy)}
+.drop{border:1.5px dashed var(--line2);border-radius:14px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:10px;color:var(--t3);background:repeating-linear-gradient(135deg,transparent 0 10px,rgba(12,20,24,.015) 10px 20px)}
+.drop .ic{width:44px;height:44px;border-radius:12px;background:var(--s1);border:1px solid var(--line);display:grid;place-items:center}
+.drop .ic svg{width:20px;stroke:var(--t2);fill:none;stroke-width:1.6}
+.drop b{color:var(--t1);font-size:15px;letter-spacing:-.02em}
+.fmt{display:flex;gap:5px}
+.fmt span{font:10px var(--mono);padding:2px 6px;border:1px solid var(--line);border-radius:4px;color:var(--t3);background:var(--s1)}
+</style></head><body>
+<div class="shell"><aside class="side" id="side"></aside>
+<div class="main">
+  <div class="top"><div class="crumbs"><b>Plan sets</b></div><div class="grow"></div><span class="mono">⌘K Search</span></div>
+  <div class="body">
+    <div class="head">
+      <div><div class="h1">Good morning, Erik.<br><span>One plan set is waiting on you.</span></div></div>
+      <button class="btn p">＋ Upload plans</button>
+    </div>
+
+    <div class="hero dark ticks">
+      <div class="l">
+        <span class="mono" style="color:var(--cy)">● Next up</span>
+        <div class="t">Finish checking<br><span>Riverside Medical — Level 1</span></div>
+        <div class="meta">The AI marked 94 walls, doors and windows. 27 left to check — about 4 minutes.</div>
+        <div class="prog">
+          <div class="track"><i style="width:71%"></i></div>
+          <div class="pl"><span class="mono">Sheet 2 of 7 · A-102</span><span class="mono" style="color:var(--cy)">71%</span></div>
+          <div style="display:flex;gap:10px"><button class="btn cy lg">Continue checking →</button><button class="btn lg" style="background:transparent;color:#c4ccd3;border-color:rgba(255,255,255,.14)">Train with what's done</button></div>
+        </div>
+      </div>
+      <div class="r"><svg id="hero"></svg><div class="glow"></div>
+        <span class="chip" style="left:22px;top:20px"><i class="dot" style="background:var(--wall)"></i>62 WALLS</span>
+        <span class="chip" style="left:126px;top:20px"><i class="dot" style="background:var(--door)"></i>18 DOORS</span>
+        <span class="chip" style="left:230px;top:20px"><i class="dot" style="background:var(--win)"></i>14 WINDOWS</span>
+      </div>
+    </div>
+
+    <div class="sec"><div class="h2">Your plan sets</div><span class="mono">3 sets · 18 sheets</span></div>
+    <div class="grid">
+      <div class="card ps"><div class="th dark ticks"><span class="mono">A-102</span><svg id="p1"></svg></div>
+        <div class="b"><div class="n">Riverside Medical — L1</div><div class="m">7 sheets · 94 items marked</div>
+        <div class="f"><span class="pill cy">● Checking · 4 of 7</span><div class="bars"><i class="d"></i><i class="c"></i><i class="d"></i><i class="d"></i><i class="d"></i><i></i><i></i></div></div></div></div>
+      <div class="card ps"><div class="th dark ticks"><span class="mono">A-101</span><svg id="p2"></svg></div>
+        <div class="b"><div class="n">Oak Street Duplex</div><div class="m">4 sheets · 212 items marked</div>
+        <div class="f"><span class="pill ok">✓ Model ready · 91%</span><div class="bars"><i class="d"></i><i class="d"></i><i class="d"></i><i class="d"></i></div></div></div></div>
+      <div class="card ps"><div class="th dark ticks"><span class="mono">S-201</span><svg id="p3"></svg></div>
+        <div class="b"><div class="n">Lakeview Warehouse</div><div class="m">7 sheets · AI reading…</div>
+        <div class="f"><span class="pill mute"><i class="dot" style="background:var(--t4)"></i>Reading drawings</span><div class="bars"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div></div></div></div>
+      <div class="drop"><div class="ic"><svg viewBox="0 0 24 24"><path d="M12 16V4M7 9l5-5 5 5M4 16v4h16v-4"/></svg></div><b>Drop a new plan set</b><span style="font-size:13px">The AI marks it up for you to check.</span><div class="fmt"><span>PDF</span><span>DXF</span><span>SCAN</span><span>JPG</span></div></div>
+    </div>
+  </div>
+</div></div>
+<script src="data.js"></script><script src="common.js"></script>
+<script>
+sidebar('plans');
+plan(document.getElementById('hero'),{items:ITEMS,vb:[150,500,1600,1100],par:'xMidYMid slice',sw:4,fo:.18,opacity:.5});
+plan(document.getElementById('p1'),{items:ITEMS,vb:[0,200,1855,1300],par:'xMidYMid slice',sw:6,fo:.18,opacity:.5});
+plan(document.getElementById('p2'),{img:'s5.png',w:2400,h:1855,vb:[0,0,2400,1855],par:'xMidYMid slice',opacity:1});
+plan(document.getElementById('p3'),{img:'s8.png',w:2400,h:1785,vb:[0,0,2400,1785],par:'xMidYMid slice',opacity:1});
+</script></body></html>

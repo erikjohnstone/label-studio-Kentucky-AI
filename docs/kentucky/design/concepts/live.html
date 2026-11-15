@@ -1,0 +1,81 @@
+<!doctype html><html><head><meta charset="utf-8"><title>Training · Kentucky AI</title><link rel="stylesheet" href="light.css">
+<style>
+.head{display:flex;align-items:flex-end;justify-content:space-between}
+.live{display:inline-flex;align-items:center;gap:8px;height:26px;padding:0 10px;border-radius:7px;background:var(--cy-m);color:var(--cy-d);font:600 10.5px var(--mono);letter-spacing:.1em;margin-bottom:14px}
+.live i{width:7px;height:7px;border-radius:50%;background:var(--cy-d);box-shadow:0 0 0 4px rgba(98,212,220,.25)}
+.grid{display:grid;grid-template-columns:1fr 380px;gap:20px;margin-top:24px;height:600px}
+.view svg{position:absolute;inset:0;width:100%;height:100%}
+.scan{position:absolute;top:0;bottom:0;width:2px;background:var(--cy);box-shadow:0 0 18px 4px rgba(98,212,220,.55),0 0 60px 20px rgba(98,212,220,.15);z-index:2}
+.scan::after{content:"";position:absolute;right:2px;top:0;bottom:0;width:140px;background:linear-gradient(90deg,transparent,rgba(98,212,220,.10))}
+.vtop{position:absolute;left:18px;right:18px;top:16px;display:flex;align-items:center;gap:8px;z-index:3}
+.lg{display:flex;align-items:center;gap:7px;height:28px;padding:0 10px;border-radius:8px;background:rgba(16,19,22,.9);border:1px solid rgba(255,255,255,.08);font-size:12.5px;color:#c4ccd3}
+.lg b{font:11px var(--mono);color:#8a939c;font-weight:400}
+.round{position:absolute;left:18px;bottom:16px;right:18px;display:flex;align-items:center;gap:14px;z-index:3}
+.round .mono{padding:5px 8px;border-radius:6px;background:rgba(16,19,22,.9);border:1px solid rgba(255,255,255,.08)}
+.ticksrow{flex:1;display:flex;gap:3px}
+.ticksrow i{flex:1;height:8px;border-radius:2px;background:#1d2227}
+.ticksrow i.d{background:rgba(98,212,220,.55)}
+.ticksrow i.c{background:var(--cy);box-shadow:0 0 8px var(--cy)}
+.col{display:flex;flex-direction:column;gap:12px}
+.big{padding:18px 20px;flex:1;display:flex;flex-direction:column}
+.big svg{margin-top:auto!important}
+.big .n{font-size:44px;font-weight:600;letter-spacing:-.04em;line-height:1}
+.big .n span{font-size:20px;color:var(--t4);letter-spacing:-.02em}
+.big .s{color:var(--t3);font-size:13px;margin-top:6px}
+.big svg{width:100%;height:64px;margin-top:12px;overflow:visible}
+.steps{padding:8px 20px}
+.st{display:flex;align-items:center;gap:12px;height:46px;border-bottom:1px solid var(--line);font-size:14px}
+.st:last-child{border:0}
+.st .i{width:20px;height:20px;border-radius:50%;display:grid;place-items:center;font-size:11px;font-weight:700;flex:none}
+.st .i.ok{background:rgba(31,157,99,.12);color:var(--ok)}
+.st .i.on{border:2px solid var(--cy-d);border-top-color:transparent}
+.st .i.wait{border:1.5px solid var(--line2)}
+.st.dim{color:var(--t4)}
+.st .r{margin-left:auto;font:11px var(--mono);color:var(--t4)}
+.note{display:flex;gap:10px;align-items:flex-start;padding:14px 18px;color:var(--t3);font-size:13px;margin-top:auto}
+.note svg{flex:none;width:16px;stroke:var(--t3);fill:none;stroke-width:1.6;margin-top:2px}
+</style></head><body>
+<div class="shell"><aside class="side" id="side"></aside>
+<div class="main">
+  <div class="top"><div class="crumbs">Plan sets <span>/</span> Riverside Medical — L1 <span>/</span> <b>Training v3</b></div></div>
+  <div class="body">
+    <div class="head">
+      <div><span class="live"><i></i>TRAINING · ROUND 26 OF 40</span>
+      <div class="h1">Model v3 is learning.<br><span>About 7 minutes left.</span></div></div>
+      <div style="display:flex;gap:10px"><button class="btn">Stop training</button></div>
+    </div>
+    <div class="grid">
+      <div class="dark ticks view" id="vw">
+        <svg id="v"></svg><div class="scan" id="scan"></div>
+        <div class="vtop"><span class="lg">Watching it practice on <b>A-105 · test sheet</b></span><span class="lg" style="margin-left:auto"><i class="dot" style="background:#62d4dc"></i>Walls</span><span class="lg"><i class="dot" style="background:#f0b24a"></i>Doors</span><span class="lg"><i class="dot" style="background:#9db1ff"></i>Windows</span></div>
+        <div class="round"><span class="mono">Round 26 / 40</span><div class="ticksrow" id="tr"></div><span class="mono" style="color:var(--cy)">65%</span></div>
+      </div>
+      <div class="col">
+        <div class="card big"><span class="mono">Doors found on the test sheet</span>
+          <div class="n" style="margin-top:10px">15 <span>of 18</span></div>
+          <div class="s">Up from 9 after round 10. Still climbing.</div>
+          <svg viewBox="0 0 300 64" preserveAspectRatio="none"><path d="M0 60 L30 52 L60 46 L90 38 L120 30 L150 26 L180 20 L195 18" fill="none" stroke="#0c1113" stroke-width="2"/><path d="M0 60 L30 52 L60 46 L90 38 L120 30 L150 26 L180 20 L195 18 V64 H0Z" fill="rgba(98,212,220,.14)"/><path d="M195 18 L300 10" stroke="#9aa3a9" stroke-dasharray="4 5" stroke-width="1.5" fill="none"/><circle cx="195" cy="18" r="4.5" fill="#62d4dc" stroke="#0e8f99" stroke-width="2"/></svg>
+        </div>
+        <div class="card steps">
+          <div class="st"><span class="i ok">✓</span>Got your 4 checked sheets ready<span class="r">0:42</span></div>
+          <div class="st"><span class="i ok">✓</span>Started from Model v2<span class="r">0:08</span></div>
+          <div class="st"><span class="i on"></span><b style="font-weight:600">Learning walls, doors and windows</b><span class="r">11:20</span></div>
+          <div class="st dim"><span class="i wait"></span>Testing on a sheet it hasn't seen</div>
+          <div class="st dim"><span class="i wait"></span>Saving Model v3</div>
+        </div>
+        <div class="card note"><svg viewBox="0 0 24 24"><path d="M4 6h16v12H4z"/><path d="M4 7l8 6 8-6"/></svg><span>You can keep working on other plan sets. We'll let you know when it's done.</span></div>
+      </div>
+    </div>
+  </div>
+</div></div>
+<script src="data.js"></script><script src="common.js"></script>
+<script>
+sidebar('plans');
+const svg=document.getElementById('v');const vb=[-260,60,2375,1780];
+const cut=1240; // reveal x
+plan(svg,{items:ITEMS,vb,par:'xMidYMid meet',sw:5,fo:.2,opacity:.42,filter:i=>Math.max(...i.p.map(p=>p[0]))<cut});
+const r=document.getElementById('vw').getBoundingClientRect();
+const sc=Math.min(r.width/vb[2],r.height/vb[3]);const ox=(r.width-vb[2]*sc)/2;
+document.getElementById('scan').style.left=(ox+(cut-vb[0])*sc)+'px';
+document.getElementById('tr').innerHTML=Array.from({length:40},(_,i)=>`<i class="${i<25?'d':i===25?'c':''}"></i>`).join('');
+</script></body></html>
