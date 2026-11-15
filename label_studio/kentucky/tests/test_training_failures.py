@@ -165,3 +165,36 @@ def test_ledger_idempotency(org_a):
     assert LedgerEntry.objects.filter(idempotency_key='inf:1:req-abc').count() == 1
     e1.refresh_from_db()
     assert e1.stripe_status in ('not_configured', 'zero_amount')
+
+
+@pytest.mark.django_db
+def test_finished_job_folder_is_cleaned_and_model_survives(org_a, version):
+    """Resource cleanup: a finished job keeps its record (spec, events, metrics) but not its data copy or checkpoints;
+    the registered model is served from object storage."""
+    from pathlib import Path
+
+    user, org = org_a
+    j = S.create_job(org, user, version, 'gnn-sage-node', 'scratch', {'epochs': 3})
+    S.authorize(j, user)
+    j = _wait(j, lambda x: x.status in S.TERMINAL_STATES)
+    assert j.status == JobStatus.COMPLETED
+    d = Path(j.job_dir)
+    assert (d / 'events.jsonl').exists() and (d / 'spec.json').exists()
+    assert not (d / 'bundle').exists() and not list((d / 'artifacts').glob('*.pt'))
+    mv = ModelVersion.objects.get(training_job=j)
+    from kentucky import storage
+
+    assert storage.exists(mv.artifact_key)
+
+
+def test_disk_full_is_an_infrastructure_error():
+    import errno
+
+    from kentucky.training.runner import _disk_full
+
+    assert _disk_full(OSError(errno.ENOSPC, 'No space left on device'))
+    assert _disk_full(RuntimeError('[enforce fail at inline_container.cc:671] . unexpected pos 131260864 vs 131260752'))
+    wrapped = RuntimeError('save failed')
+    wrapped.__cause__ = OSError(errno.ENOSPC, 'full')
+    assert _disk_full(wrapped)
+    assert not _disk_full(ValueError('Training split is empty'))

@@ -340,8 +340,8 @@ def _finish(job, provider, ev):
         _bill_and_close(job, JobStatus.TIMED_OUT, ev.get('message', 'timeout'))
     else:
         provider.cleanup(job)
-        # training code errors (bad data, missing weights ...) are not retried
-        _fail(job, ev.get('message', 'error'), retryable=False, traceback=ev.get('traceback'))
+        # training code errors (bad data, missing weights ...) are not retried; infrastructure errors (disk full) are
+        _fail(job, ev.get('message', 'error'), retryable=bool(ev.get('infra')), traceback=ev.get('traceback'))
 
 
 def _fail(job, msg, retryable: bool, traceback=None):
@@ -373,6 +373,24 @@ def _bill_and_close(job, status, reason, infra_failure=False):
                       ch['infra'], 0, 'training_job', job.id, 'Infrastructure failure - not charged')
     job.save()
     transition(job, status, reason=reason)
+    cleanup_job_dir(job)
+
+
+def cleanup_job_dir(job) -> int:
+    """Free the working copy of a finished job: dataset bundle, base checkpoint and checkpoints (the registered model
+    is already in object storage). Keeps spec, events, logs and metrics for the run's record. Returns bytes freed."""
+    d = Path(job.job_dir) if job.job_dir else None
+    if d is None or not d.exists() or job.status not in TERMINAL_STATES:
+        return 0
+    freed = 0
+    for p in [d / 'bundle', d / 'base.pt', *sorted((d / 'artifacts').glob('*.pt'))]:
+        if p.is_dir():
+            freed += sum(f.stat().st_size for f in p.rglob('*') if f.is_file())
+            shutil.rmtree(p, ignore_errors=True)
+        elif p.exists():
+            freed += p.stat().st_size
+            p.unlink()
+    return freed
 
 
 def register_model(job, ev) -> ModelVersion:

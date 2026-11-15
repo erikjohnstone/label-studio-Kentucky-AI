@@ -60,8 +60,25 @@ def run(job_dir: str) -> int:
         rep.emit('timeout', message=str(e))
         return 4
     except Exception as e:  # noqa: BLE001
+        if _disk_full(e):  # infrastructure, not the customer's data or settings: not charged, retried
+            rep.emit('error', message='The training machine ran out of disk space while saving. This is our side; '
+                     'the run is retried and you are not charged for it.', infra=True, traceback=traceback.format_exc()[-4000:])
+            return 75
         rep.emit('error', message=f'{type(e).__name__}: {e}', traceback=traceback.format_exc()[-4000:])
         return 1
+
+
+def _disk_full(e: BaseException) -> bool:
+    import errno
+
+    while e is not None:
+        if isinstance(e, OSError) and e.errno == errno.ENOSPC:
+            return True
+        txt = str(e)
+        if 'No space left on device' in txt or ('inline_container' in txt and 'unexpected pos' in txt):  # torch.save on a full disk
+            return True
+        e = e.__cause__ or e.__context__
+    return False
 
 
 if __name__ == '__main__':
