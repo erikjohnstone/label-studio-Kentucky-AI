@@ -349,6 +349,7 @@ class Deployment(OrgScoped):
     history = models.JSONField(default=list)  # [{version_id, at, by, action}]
     status = models.CharField(max_length=20, default='active')  # active|paused|deleted
     kind = models.CharField(max_length=20, default='serverless')  # serverless|dedicated
+    hosting_billed_until = models.DateTimeField(null=True, blank=True)  # dedicated: hourly hosting accrued up to here
     rate_limit_per_minute = models.PositiveIntegerField(default=60)
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, on_delete=models.SET_NULL, related_name='+')
     request_count = models.BigIntegerField(default=0)

@@ -8,7 +8,7 @@ Measured on the development container (4 vCPU, no GPU, Python 3.12.3, torch 2.15
 ```bash
 cd label_studio
 python -m pytest kentucky/tests -q -p no:cacheprovider
-# 42 passed
+# 44 passed
 ```
 
 | File | What it proves |
@@ -19,6 +19,7 @@ python -m pytest kentucky/tests -q -p no:cacheprovider
 | `test_review_flow.py` | Check screen: AI suggestions → Keep / relabel / Dismiss / undo → autosaved Label Studio annotation keeps agent provenance (`ka<proposal>` ids) → Done dismisses the rest and approves the sheet; home overview states; only checked sheets enter a dataset version; org scoping of every review endpoint; outline repair of self-crossing polygons |
 | `test_training_center.py` | Training Center advanced mode: defaults + schema, per-architecture estimates, explicit architecture / start point / settings stored exactly, invalid settings rejected, run lineage for Experiments |
 | `test_storage_s3.py` | S3-compatible backend (R2/S3/MinIO) against moto's emulated S3: round-trips, org-prefix refusal, prefix delete, PDF ingestion writing to the bucket, sheet image + signed download served from it, cross-org 404 |
+| `test_hosting.py` | Always-on hosting: hourly accrual is idempotent, pro-rata on pause, nothing accrues while paused, no back-billing on resume; auto-pause at the spend limit; dedicated deploy refused when it would pass the limit |
 | `test_security.py` | **Test E** org B cannot read or change org A's drawings, datasets, annotations, jobs, checkpoints, models, deployments or API keys (API + signed file URLs) |
 | `test_training_failures.py` | **Test F** invalid datasets/selections fail validation; missing weights / unknown init / CPU-only restrictions; paid providers require operator enablement + payment method; cancellation kills the worker and bills once; timeouts terminate hung workers; worker crash retried (infra failure not charged); training-code errors fail without retry; ledger idempotency |
 

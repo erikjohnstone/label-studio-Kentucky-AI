@@ -122,6 +122,7 @@ def _ser_dep(d: Deployment):
             'active_version': d.active_version_id, 'active_version_number': d.active_version.version, 'status': d.status,
             'kind': d.kind, 'rate_limit_per_minute': d.rate_limit_per_minute, 'history': d.history, 'request_count': d.request_count,
             'error_count': d.error_count, 'last_request_at': d.last_request_at, 'created_at': d.created_at,
+            'hosting_per_hour': pricing.pricing()['dedicated_hosting_per_hour'] if d.kind == 'dedicated' else None,
             'endpoint': f'/api/ka/v1/deployments/{d.slug}/predict'}
 
 
@@ -634,11 +635,23 @@ def deployments(request):
     if not request.data.get('confirm'):
         raise ValidationError({'confirm': 'explicit confirmation required: deployment exposes an authenticated API endpoint'})
     name = request.data.get('name') or f'{mv.model.name}'
+    kind = request.data.get('kind', 'serverless')
+    if kind not in ('serverless', 'dedicated'):
+        raise ValidationError({'kind': 'serverless | dedicated'})
+    if kind == 'dedicated':
+        ok, why = ledger.check_spend(org, Decimal(pricing.pricing()['dedicated_hosting_per_hour']))
+        if not ok:
+            raise ValidationError({'detail': f'Always-on hosting would pass your monthly limit: {why}'})
     slug = f'{slugify(name)[:50]}-{org.id}-{int(time.time()) % 100000}'
     d = Deployment.objects.create(organization=org, name=name[:200], slug=slug, model=mv.model, active_version=mv, created_by=request.user,
+                                  kind=kind, hosting_billed_until=timezone.now() if kind == 'dedicated' else None,
                                   rate_limit_per_minute=int(request.data.get('rate_limit_per_minute', 60)),
                                   history=[{'version_id': mv.id, 'version': mv.version, 'at': timezone.now().isoformat(), 'by': request.user.id, 'action': 'create'}])
-    audit(request, 'deployment.create', d, version=mv.id)
+    audit(request, 'deployment.create', d, version=mv.id, kind=kind)
+    if kind == 'dedicated':  # keep the weights loaded: first request is as fast as the rest
+        from .inference.predictors import load_checkpoint
+
+        load_checkpoint(mv)
     return Response(_ser_dep(d), status=201)
 
 
@@ -662,6 +675,12 @@ def deployment_action(request, pk, action):
                                   'previous': d.active_version_id}]
         d.active_version = mv
     elif action in ('pause', 'resume', 'delete'):
+        from .billing import hosting
+
+        if action in ('pause', 'delete') and d.status == 'active':
+            hosting.accrue(d, final=True)  # bill the hosted time up to now, pro-rata
+        if action == 'resume' and d.kind == 'dedicated':
+            d.hosting_billed_until = timezone.now()
         d.status = {'pause': 'paused', 'resume': 'active', 'delete': 'deleted'}[action]
     elif action == 'rate-limit':
         d.rate_limit_per_minute = max(1, min(int(request.data.get('rate_limit_per_minute', 60)), 6000))

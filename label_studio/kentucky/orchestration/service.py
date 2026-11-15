@@ -452,6 +452,9 @@ def tick() -> int:
             continue
         supervise(job)
         n += 1
+    from ..billing import hosting
+
+    hosting.accrue_all()  # always-on deployments: hourly hosting charges
     return n
 
 

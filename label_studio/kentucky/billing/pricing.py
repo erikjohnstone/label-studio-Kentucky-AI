@@ -29,6 +29,7 @@ DEFAULT_PRICING = {
     'inference_infra_per_1k': {'semantic_segmentation': '0.40', 'instance_segmentation': '0.60',
                                'node_classification': '0.05', 'edge_classification': '0.05'},
     'dedicated_hosting_per_hour': '1.20',
+    'dedicated_hosting_infra_per_hour': '0.80',
     'storage_per_gb_month': '0.03',
 }
 

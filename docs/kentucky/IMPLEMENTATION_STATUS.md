@@ -32,10 +32,10 @@ Legend: **Verified** = implemented and exercised by tests and/or a real end-to-e
 | 19 | Persistent job orchestration | Verified | DB state machine, `manage.py ka_worker`, heartbeats, cancel, timeouts, retries, crash recovery; Test F |
 | 20 | Cloud GPU provider integration | **Untested on paid cloud** (Modal) / **Partial** (Lambda) | Modal adapter + app (`deploy/modal/ka_trainer.py`) — never run, no credentials; Lambda launch/terminate implemented, on-instance bootstrap not implemented so launching is refused. Both gated by `KA_ENABLE_PAID_COMPUTE` |
 | 21 | Usage metering | Verified | idempotent ledger for training time, runs and API requests; dashboard on Billing |
-| 22 | Billing-ready infrastructure | Verified locally / **Blocked** for live charges | monthly limit enforced before training, reservations for running jobs, payment-method gate; Stripe off until `KA_STRIPE_SECRET_KEY`; prices are placeholders |
+| 22 | Billing-ready infrastructure | Verified locally / **Blocked** for live charges | billing accounts, payment method (Stripe test-mode card), estimates, ledger with infra cost vs customer charge, idempotent events, monthly limit enforced before training and for hosting, reservations for running jobs, usage dashboard, history; Stripe off until `KA_STRIPE_SECRET_KEY`; prices are placeholders |
 | 23 | Organization isolation | Verified | org-prefixed storage, signed URLs, every query org-scoped; Test E + review scoping test |
 | 24 | Kentucky AI-consistent UI | Verified | v5 design system, Light + Dark, all screens (see `DESIGN_TOKENS.md`) |
-| 25 | Passing end-to-end tests | Verified | 42 passed (Tests A–F, review flow, training center, S3 storage) |
+| 25 | Passing end-to-end tests | Verified | 44 passed (Tests A–F, review flow, training center, S3 storage, hosting) |
 
 ## Other prompt sections
 * Training Center wizard (§13): dataset → readiness → task → architecture → starting point → recommended or
@@ -43,7 +43,7 @@ Legend: **Verified** = implemented and exercised by tests and/or a real end-to-e
 * Experiment tracking (§15): Experiments page with lineage, metrics, runtime, hardware, compare (curves + config diff). **Verified.**
 * Kentucky AI pretrained models: **Not available** — none exist in the audited repositories; the UI says so.
 * Storage: local filesystem backend **Verified**; S3-compatible backend for Cloudflare R2 / S3 / MinIO **Verified against an emulated S3 API (moto)**, not yet against a real bucket. Enable with `KA_STORAGE_BACKEND=s3`, `KA_S3_BUCKET`, `KA_S3_ENDPOINT_URL`, `KA_S3_REGION` and the standard AWS key variables.
-* Dedicated hosting (always-on instances): **Not implemented**; deployments run in the platform process (serverless-style, metered per request).
+* Hosting: **Pay per request** (metered per call) and **Always on** (weights kept loaded, billed hourly by the worker, idempotent per deployment-hour, pro-rata on pause, refused / auto-paused at the monthly limit) — **Verified** locally. Both run in the platform's own process; separate GPU inference instances are **Not implemented**.
 * Hosted platform (Railway or similar): **Not deployed** — per instruction, no services connected yet.
 
 ## What needs credentials / paid verification
@@ -64,7 +64,7 @@ python label_studio/manage.py migrate
 python label_studio/manage.py collectstatic --noinput
 python label_studio/manage.py runserver 0.0.0.0:8080      # app at http://localhost:8080/ka/
 python label_studio/manage.py ka_worker                   # second terminal: runs training jobs
-cd label_studio && python -m pytest kentucky/tests -q     # 42 tests
+cd label_studio && python -m pytest kentucky/tests -q     # 44 tests
 ```
 The embedded labeling engine (precise outline editor) needs the Label Studio frontend build:
 `cd web && bun install && bun --bun run vite build --config vite.config.editor.ts --base /ka/engine/`.

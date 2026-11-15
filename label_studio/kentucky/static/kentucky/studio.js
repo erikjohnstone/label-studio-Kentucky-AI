@@ -8,6 +8,7 @@
   const plural = (n, w, pl) => `${fmt.n(n)} ${n === 1 ? w : pl || w + 's'}`;
   const TASK = { semantic_segmentation: 'Outline areas', instance_segmentation: 'Item by item', node_classification: 'Name every line', edge_classification: 'Connections' };
   const head = (title, dim, actions) => h('div.headrow', {}, h('h1.h1', {}, title, dim ? [h('br'), h('span.dim', {}, dim)] : null), actions ? h('div.row', { style: { gap: '10px' } }, actions) : null);
+  const usd = (v) => (Number(v) > 0 && Number(v) < 0.01 ? '$' + Number(v).toFixed(4) : fmt.usd(v));
   const pct = (v) => (v == null ? '—' : Math.round(v * 100) + '%');
   const from = (init, base) => (init === 'checkpoint' ? `Your v${base ?? '?'}` : init === 'pretrained' ? 'Public checkpoint' : init === 'scratch' ? 'From zero' : init || '—');
   const STATUS = { COMPLETED: ['Done', 'ok'], FAILED: ['Failed', 'warn'], CANCELLED: ['Stopped', 'mute'], TIMED_OUT: ['Timed out', 'warn'], CREATED: ['Waiting for OK', 'mute'] };
@@ -84,7 +85,7 @@
           h('tbody', {}, [['Plan set · data', (j) => `${j.dataset_name} · v${j.dataset_version}`], ['Architecture', (j) => j.architecture], ['Started from', (j) => from(j.init, j.base_version)],
             ['Seed', (j) => j.seed], ['Code version', (j) => (j.code_version || '').slice(0, 12)], ['Hardware', (j) => j.gpu_type], ['Runtime', (j) => fmt.dur(j.runtime_s)],
             ...Object.keys(cmp.config_differences || {}).map((k) => [k, (j) => JSON.stringify(j.config?.[k])]),
-            ...Object.keys(full[0].headline || {}).map((k) => [`Result: ${k.replace(/_/g, ' ')}`, (j) => (typeof j.headline?.[k] === 'number' ? j.headline[k].toFixed(3) : '—')])]
+            ...Object.keys(full[0].headline || {}).filter((k) => k !== 'split').map((k) => [`Result: ${k.replace(/_/g, ' ')}`, (j) => (typeof j.headline?.[k] === 'number' ? j.headline[k].toFixed(3) : '—')])]
             .map(([k, f]) => h('tr', {}, h('td', {}, k), full.map((j) => h('td.mono.small', {}, String(f(j) ?? '—')))))))));
       out.scrollIntoView({ behavior: 'smooth' });
     }
@@ -121,7 +122,7 @@
       view.ondragover = (e) => { e.preventDefault(); view.classList.add('over'); }; view.ondragleave = () => view.classList.remove('over');
       view.ondrop = (e) => { e.preventDefault(); view.classList.remove('over'); e.dataTransfer.files[0] && run(e.dataTransfer.files[0]); };
       return h('section.depcard', {}, h('div.depinfo', {},
-        h('div.row', { style: { gap: '8px' } }, d.status === 'active' ? h('span.pill.ok', {}, h('span.dot'), 'Live') : h('span.pill.warn', {}, 'Paused'), lbl(`${TASK[d.task] || d.task} · v${d.active_version_number}`)),
+        h('div.row', { style: { gap: '8px' } }, d.status === 'active' ? h('span.pill.ok', {}, h('span.dot'), 'Live') : h('span.pill.warn', {}, 'Paused'), d.kind === 'dedicated' ? h('span.pill.cy', {}, `Always on · ${fmt.usd(d.hosting_per_hour)}/hr`) : h('span.pill.mute', {}, 'Pay per request'), lbl(`${TASK[d.task] || d.task} · v${d.active_version_number}`)),
         h('div.h2', { style: { marginTop: '10px' } }, d.name),
         h('div.endpoint', {}, h('code', {}, `POST ${location.origin}${d.endpoint}`), copyBtn(`${location.origin}${d.endpoint}`)),
         h('div.dstats', {}, [['Requests', fmt.n(d.request_count)], ['Errors', fmt.n(d.error_count)], ['Last request', fmt.ago(d.last_request_at)], ['Limit', `${d.rate_limit_per_minute}/min`]].map(([k, v]) => h('div', {}, h('b', {}, v), lbl(k)))),
@@ -187,24 +188,30 @@
     const a = b.account, u = b.usage;
     setTop(['Billing']);
     const cap = Number(a.monthly_spend_cap_usd), used = Number(u.month_to_date) + Number(u.reserved_for_active_jobs);
-    const NAMES = { training_compute: 'Training time', training_platform_fee: 'Training runs', inference: 'API requests', hosting: 'Hosting', storage: 'Storage' };
+    const NAMES = { training_compute: 'Training time', training_platform_fee: 'Training runs', inference: 'API requests', hosting: 'Always-on hosting', storage: 'Storage' };
     const capIn = h('input', { type: 'number', step: '10', value: cap.toFixed(0), style: { width: '120px' } });
     const tiers = b.pricing.compute_tiers;
     mount(head('Billing.', 'Pay as you go. Nothing runs on paid hardware without your OK.'),
-      h('div.stat4', {}, [['This month', fmt.usd(u.month_to_date), 'so far'], ['Reserved', fmt.usd(u.reserved_for_active_jobs), 'for training running now'],
-        ['Monthly limit', fmt.usd(cap), `${Math.round((used / Math.max(cap, 0.01)) * 100)}% used`], ['Payment', a.payment_method_status === 'none' ? 'Not set' : 'Card on file', a.stripe_mode === 'not_configured' ? 'Payments not connected yet' : `Stripe ${a.stripe_mode}`]]
+      h('div.stat4', {}, [['This month', usd(u.month_to_date), 'so far'], ['Reserved', fmt.usd(u.reserved_for_active_jobs), 'for training running now'],
+        ['Monthly limit', fmt.usd(cap), `${Math.round((used / Math.max(cap, 0.01)) * 100)}% used`], ['Payment', a.payment_method_status === 'none' ? 'Not set' : a.payment_method_status === 'test_card' ? 'Test card' : 'Card on file', a.stripe_mode === 'not_configured' ? 'Payments not connected yet' : `Stripe ${a.stripe_mode} mode`]]
         .map(([k, v, s]) => h('div', {}, lbl(k), h('b', {}, v), h('small', {}, s)))),
       h('div.bgrid', {},
         h('section.regcard.pad', {}, h('div.h2', {}, 'Monthly limit'), h('p.muted.small', {}, 'New training is refused before it could go over this. Running jobs stop at their approved maximum.'),
           meter(Math.min(1, used / Math.max(cap, 0.01))), h('div.row', { style: { marginTop: '14px', gap: '8px' } }, h('span.muted', {}, '$'), capIn, h('button.btn', { onclick: async () => { await guard(() => api('billing/', { method: 'PATCH', body: { monthly_spend_cap_usd: capIn.value } }), 'Limit saved'); P.billing(); } }, 'Save'))),
-        h('section.regcard.pad', {}, h('div.h2', {}, 'Last 30 days'), Object.keys(u.by_kind).length ? Object.entries(u.by_kind).map(([k, v]) => h('div.brow', {}, h('span', {}, NAMES[k] || k), meter(Number(v.charge) / Math.max(Number(u.total_charge), 0.01)), h('span.mono.small', {}, fmt.usd(v.charge)))) : h('p.muted', {}, 'Nothing billed yet.')),
+        h('section.regcard.pad', {}, h('div.h2', {}, 'Payment method'),
+          h('p.muted.small', {}, a.stripe_mode === 'live' ? 'Cards are managed securely by Stripe.' : 'Payments are in test mode: no real card is ever charged. A test card lets you try paid GPUs and always-on hosting end to end.'),
+          a.payment_method_status === 'none'
+            ? h('button.btn', { disabled: a.stripe_mode === 'live', onclick: async () => { await guard(() => api('billing/', { method: 'PATCH', body: { payment_method: 'test_card' } }), 'Test card added'); P.billing(); } }, 'Add test card')
+            : h('div.row', { style: { gap: '8px' } }, h('span.pill.ok', {}, a.payment_method_status === 'test_card' ? '✓ Test card on file' : '✓ Card on file'), h('button.btn.sm.ghost', { onclick: async () => { await guard(() => api('billing/', { method: 'PATCH', body: { payment_method: 'remove' } }), 'Removed'); P.billing(); } }, 'Remove'))),
+        h('section.regcard.pad', {}, h('div.h2', {}, 'Last 30 days'), Object.keys(u.by_kind).length ? Object.entries(u.by_kind).map(([k, v]) => h('div.brow', {}, h('span', {}, NAMES[k] || k), meter(Number(v.charge) / Math.max(Number(u.total_charge), 0.01)), h('span.mono.small', {}, usd(v.charge)))) : h('p.muted', {}, 'Nothing billed yet.')),
         h('section.regcard.pad', {}, h('div.h2', {}, 'Prices'), h('table.rtable.compact', {}, h('tbody', {},
           Object.entries(tiers).map(([k, t]) => h('tr', {}, h('td', {}, k === 'cpu-local' ? 'Standard training' : k), h('td.mono.small', {}, Number(t.customer_per_hour) ? `${fmt.usd(t.customer_per_hour)}/hr` : 'Included'))),
           h('tr', {}, h('td', {}, 'API requests (outlines)'), h('td.mono.small', {}, `${fmt.usd(b.pricing.inference_per_1k.semantic_segmentation)}/1k`)),
-          h('tr', {}, h('td', {}, 'API requests (item by item)'), h('td.mono.small', {}, `${fmt.usd(b.pricing.inference_per_1k.instance_segmentation)}/1k`)))),
+          h('tr', {}, h('td', {}, 'API requests (item by item)'), h('td.mono.small', {}, `${fmt.usd(b.pricing.inference_per_1k.instance_segmentation)}/1k`)),
+          h('tr', {}, h('td', {}, 'Always-on hosting'), h('td.mono.small', {}, `${fmt.usd(b.pricing.dedicated_hosting_per_hour)}/hr`)))),
         b.pricing.placeholder ? h('p.small.warn', { style: { marginTop: '10px' } }, 'Placeholder prices while payments are set up. Nothing is charged until payments are connected.') : null)),
       b.history.length ? h('section.regcard', {}, h('table.rtable', {}, h('thead', {}, h('tr', {}, ['Date', 'What', 'Quantity', 'Amount'].map((x) => h('th', {}, x)))),
-        h('tbody', {}, b.history.slice(0, 40).map((e) => h('tr', {}, h('td.faint', {}, fmt.date(e.created_at)), h('td', {}, e.description || NAMES[e.kind] || e.kind), h('td.mono.small', {}, `${Number(e.quantity).toFixed(2)} ${e.unit}`), h('td.mono.small', {}, fmt.usd(e.customer_charge_usd))))))) : null);
+        h('tbody', {}, b.history.slice(0, 40).map((e) => h('tr', {}, h('td.faint', {}, fmt.date(e.created_at)), h('td', {}, e.description || NAMES[e.kind] || e.kind), h('td.mono.small', {}, `${Number(e.quantity).toFixed(2)} ${e.unit}`), h('td.mono.small', {}, usd(e.customer_charge_usd))))))) : null);
   };
 
   // ================================================================== Team & data

@@ -349,11 +349,19 @@
 
   async function deployDialog(mvId, name) {
     const n = h('input', { type: 'text', value: name });
+    let kind = 'serverless';
+    const opts = h('div.advgrid', { style: { gridTemplateColumns: '1fr 1fr' } });
+    let rate = '1.20';
+    try { rate = (await api('billing/')).pricing.dedicated_hosting_per_hour; } catch (e) { /* keep default */ }
+    const draw = () => opts.replaceChildren(
+      h('button.advopt' + (kind === 'serverless' ? '.on' : ''), { type: 'button', onclick: () => { kind = 'serverless'; draw(); } }, h('div', {}, h('b', {}, 'Pay per request'), h('small', {}, 'Loads when called. Best to start with.'))),
+      h('button.advopt' + (kind === 'dedicated' ? '.on' : ''), { type: 'button', onclick: () => { kind = 'dedicated'; draw(); } }, h('div', {}, h('b', {}, 'Always on'), h('small', {}, `Kept loaded for steady traffic. ${fmt.usd(rate)}/hour while it runs; pause any time.`))));
+    draw();
     const ok = await dialog('Put this model to work', h('div.grid', { style: { gap: '16px' } },
       h('p.muted', { style: { margin: 0 } }, 'You get a private API endpoint. Your software sends a plan sheet and gets back every item with its outline. Only requests with your API key are accepted.'),
-      h('label.field', {}, h('span', {}, 'Name'), n)), [{ label: 'Deploy', primary: true }]);
+      h('label.field', {}, h('span', {}, 'Name'), n), opts), [{ label: 'Deploy', primary: true }]);
     if (!ok) return;
-    await guard(() => api('deployments/', { method: 'POST', body: { model_version_id: mvId, name: n.value, confirm: true } }));
+    await guard(() => api('deployments/', { method: 'POST', body: { model_version_id: mvId, name: n.value, confirm: true, kind } }));
     location.href = '/ka/deployments/?new=1';
   }
 

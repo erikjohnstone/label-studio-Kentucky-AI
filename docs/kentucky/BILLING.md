@@ -15,3 +15,11 @@
 * **Rates**: `billing/pricing.py` contains **placeholder** development rates (flagged in API and UI).
   Configure `KA_PRICING` with contracted provider costs and customer prices before charging.
 * **Dashboard**: `/ka/billing/` shows spend vs cap, payment method, usage by kind, rates and history.
+
+## Always-on hosting
+A deployment can be **Pay per request** (default) or **Always on** (`kind: dedicated`). Always-on keeps the
+model loaded and the worker (`ka_worker`) accrues one ledger entry per deployment-hour
+(`hosting:<deployment>:<hour start>` — idempotent) at `dedicated_hosting_per_hour` (customer) and
+`dedicated_hosting_infra_per_hour` (our cost). Pausing or deleting bills the partial hour pro-rata; resuming
+restarts the clock. Creating one is refused if one hour would pass the monthly limit, and a running one is
+paused automatically (with an audit entry) when the next hour would pass it.
