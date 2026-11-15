@@ -51,7 +51,7 @@ CATALOG = [
         'architecture': 'transformers.Dinov2WithRegistersModel (ViT-S/14, 4 registers) + multi-layer fusion head with a full-resolution line branch',
         **HF, 'version': 'transformers>=4.48',
         'description': 'Self-supervised ViT backbone pretrained by Meta on 142M images, with a multi-scale head for thin linework. '
-                       'Measured: on 10 scanned plans (7 for training) mean IoU 0.74 vs 0.63 for LR-ASPP, every item found; on a '
+                       'Measured: on 10 scanned plans (8 for training) mean IoU 0.74 vs 0.63 for LR-ASPP, every item found; on a '
                        '2-sheet set it trailed (0.10 vs 0.34). Use it once you have 5+ checked sheets; about 4x the training time.',
         'gpu_recommended': 'T4 / A10G', 'cpu_trainable': True, 'badge': 'Best with 5+ sheets', 'min_sheets': 5,
         'inits': [{

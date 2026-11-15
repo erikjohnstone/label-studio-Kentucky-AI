@@ -106,3 +106,44 @@ Conclusions on this (small, synthetic) data: RT-DETRv2 is the better item model 
 are better as outline areas. DINOv2 did not beat LR-ASPP and is marked experimental. Run 15 (RT-DETRv2) trained
 fine but its long-running worker predated the new catalog entry and could not register it; the worker now
 fails with an explicit "restart the worker" message and the deploy rule is documented.
+
+## Benchmarks on larger plan sets (all through the platform UI)
+Plan sets uploaded through the Plan sets drop zone; exact labels from the drawing generator (scan labels follow the
+scan skew, verified to 0.1 px); every run started from Train → Customize; same snapshot and held-out test sheet per table.
+
+**Scanned plans** — 10 skewed, noisy scans (8 train / 1 check / 1 test sheet), 503 labeled items.
+
+| Model | Start | Test result | Walls | Doors | Windows | CPU time |
+|---|---|---|---|---|---|---|
+| DINOv2-S segmentation | pretrained (Apache-2.0) | **mean IoU 0.744** | 47/47 | 12/12 | 11/11 | 39 min |
+| LR-ASPP MobileNetV3 | from zero | mean IoU 0.627 | 47/47 | 12/12 | 11/11 | 10 min |
+| **D-FINE-S** | pretrained (Apache-2.0) | **mAP50 0.954** | 45/47 | 12/12 | 11/11 | 13 min |
+| RT-DETRv2-R18 | pretrained (Apache-2.0) | mAP50 0.753 | 30/47 | 12/12 | 8/11 | 18 min |
+| Mask R-CNN MobileNetV3 | from zero | mAP50 0.615 | 36/47 | 12/12 | 4/11 | 37 min |
+
+**Vector plans** — 10 PDFs (3 rotated 90°) + 3 DXF (9 train / 2 check / 2 test sheets), 830 labeled items, 3,154 labeled lines.
+
+| Model | Start | Test result | Walls | Doors | Windows | CPU time |
+|---|---|---|---|---|---|---|
+| LR-ASPP MobileNetV3 | from zero | mean IoU 0.665 | 118/118 | 34/34 | 14/22 | 6 min |
+| **RT-DETRv2-R18** | pretrained | **mAP50 0.893** | 101/118 | 34/34 | 22/22 | 27 min |
+| D-FINE-S | pretrained | mAP50 0.785 | 93/118 | 32/34 | 21/22 | 20 min |
+| **Graph transformer (GPS + GINE)** | from zero | **macro-F1 1.000** | 472/472 lines | 68/68 | 66/66 | 12 s |
+| GATv2 | from zero | macro-F1 0.992 | 468/472 | 68/68 | 66/66 | 8 s |
+| GCN | from zero | macro-F1 0.992 | 468/472 | 68/68 | 66/66 | 6 s |
+| GraphSAGE | from zero | macro-F1 0.986 | 467/472 | 67/68 | 66/66 | 6 s |
+| GraphSAGE connections | from zero | macro-F1 0.927 | — | — | — | 16 s |
+
+What changed in the product because of these numbers: D-FINE-S is the default item model for scanned plan sets and
+RT-DETRv2 for vector sets; DINOv2-S is flagged "Best with 5+ sheets" (it trailed with 2 training sheets, led with 8);
+the graph transformer is the default line-by-line model; Find more with AI takes each item type from the model with
+the best measured score for it. Synthetic drawings are easier than real ones — graph models reaching 1.00 here does
+not mean they will on customer CAD.
+
+**Find more like this** (mark one symbol, template search): tuned on 12 searches over scans and vectors — 83% of repeats
+found, 0 wrong; through the Check screen on an unseen scan: 11/11 other doors, 0 wrong.
+
+**Bugs found by running these through the platform, all fixed:** a stale worker could not register new models (now an
+explicit message + deploy rule); numpy types in proposal evidence broke saving; skewed-scan ground truth ignored the
+skew (test data); Deployments listed oldest first; finished jobs never freed their working copies (11.4 GB here) and a
+full disk produced a cryptic, charged, non-retried failure.
