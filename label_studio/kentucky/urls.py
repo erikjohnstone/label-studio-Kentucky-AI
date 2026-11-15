@@ -8,10 +8,17 @@ A = 'api/ka/'
 urlpatterns = [
     # ---------------------------------------------------------------- UI
     path('ka/', views.page, name='home'),
-    path('ka/datasets/<int:pk>/', views.page, {'name': 'dataset'}, name='dataset-page'),
+    path('ka/projects/<int:pk>/', views.page, {'name': 'project'}, name='project-page'),
+    path('ka/markup/<int:pk>/', views.page, {'name': 'markup'}, name='markup-page'),
     path('ka/graph/<int:pk>/', views.page, {'name': 'graph'}, name='graph-page'),
-    path('ka/experiments/<int:pk>/', views.page, {'name': 'experiment'}, name='experiment-page'),
-    path('ka/<str:name>/', views.page, name='page'),
+    path('ka/models/', views.page, {'name': 'models'}, name='models-page'),
+    path('ka/train/', views.page, {'name': 'train'}, name='train-page'),
+    path('ka/runs/<int:pk>/', views.page, {'name': 'run'}, name='run-page'),
+    path('ka/deployments/', views.page, {'name': 'deployments'}),
+    path('ka/api-keys/', views.page, {'name': 'apikeys'}),
+    path('ka/api/', views.page, {'name': 'api'}),
+    path('ka/billing/', views.page, {'name': 'billing'}),
+    path('ka/team/', views.page, {'name': 'team'}),
     path('ka/files/sheet/<int:pk>/image.png', views.sheet_image, name='sheet-image'),
     path('ka/files/sheet/<int:pk>/tile/<int:level>/<int:col>/<int:row>.png', views.sheet_tile, name='sheet-tile'),
     path('ka/files/signed/<str:token>', views.signed_file, name='signed-file'),
@@ -64,6 +71,5 @@ urlpatterns = [
 urlpatterns += [
     path(A + 'sheets/<int:pk>/markup/', api.sheet_markup),
     path('ka/engine/<path:path>', views.engine_asset, name='engine-asset'),
-    path('ka/markup/<int:pk>/', views.page, {'name': 'markup'}, name='markup-page'),
-    path('ka/projects/<int:pk>/', views.page, {'name': 'dataset'}, name='project-page'),
 ]
+urlpatterns += [path(A + 'datasets/<int:pk>/train/', api.dataset_train)]

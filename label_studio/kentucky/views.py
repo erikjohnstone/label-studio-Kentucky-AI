@@ -15,10 +15,9 @@ from .ingest.pipeline import read_tile
 from .models import Sheet
 
 PAGES = {
-    'dashboard': 'Dashboard', 'datasets': 'Dataset Center', 'dataset': 'Dataset', 'graph': 'Graph Studio', 'catalog': 'Model Catalog',
-    'training': 'Training Center', 'experiments': 'Experiments', 'experiment': 'Experiment', 'models': 'Model Registry',
-    'deployments': 'Deployments', 'keys': 'API Keys', 'billing': 'Usage & Billing', 'settings': 'Organization Settings',
-    'apidocs': 'API Reference', 'labeling': 'Labeling Studio', 'markup': 'Mark up plan',
+    'home': 'Datasets', 'project': 'Project', 'markup': 'Mark up plan', 'graph': 'Plan structure', 'models': 'Models',
+    'train': 'Train a model', 'run': 'Training', 'deployments': 'Deployments', 'apikeys': 'API keys', 'api': 'API docs',
+    'billing': 'Billing', 'team': 'Team & settings',
 }
 
 
@@ -30,7 +29,7 @@ def _org(request):
 
 
 @login_required
-def page(request, name='dashboard', pk=None):
+def page(request, name='home', pk=None):
     if name not in PAGES:
         raise Http404()
     _org(request)

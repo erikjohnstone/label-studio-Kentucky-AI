@@ -867,3 +867,32 @@ def sheet_markup(request, pk):
                      'pending_suggestions': pending,
                      'classes': [c for c in tax.classes if c['kind'] == 'cv'],
                      'user': {'id': request.user.id, 'email': request.user.email}})
+
+
+GOALS = {
+    'outlines': {'task': 'semantic_segmentation', 'catalog_id': 'seg-lraspp-mbv3'},
+    'structure': {'task': 'node_classification', 'catalog_id': 'gnn-gat-node'},
+    'relations': {'task': 'edge_classification', 'catalog_id': 'gnn-sage-edge'},
+}
+
+
+@api_view(['POST'])
+def dataset_train(request, pk):
+    """One-click training: snapshot the project (immutable version) and create a validated job for the goal.
+    If the org already has a model of the same type, it continues from it (fine-tune) unless fresh=true."""
+    d = _get(Dataset, request, pk=pk)
+    goal = GOALS.get(request.data.get('goal', 'outlines'))
+    if goal is None:
+        raise ValidationError({'goal': 'outlines | structure | relations'})
+    v = create_version(d, request.user, notes='created by Train model')
+    if not v.readiness['ready_for'].get(goal['task']):
+        return Response({'ready': False, 'readiness': v.readiness, 'version_id': v.id}, status=200)
+    base = None
+    if not request.data.get('fresh'):
+        base = (ModelVersion.objects.filter(organization=d.organization, model__catalog_id=goal['catalog_id'], status='ready')
+                .order_by('-created_at').first())
+    j = orch.create_job(d.organization, request.user, v, goal['catalog_id'], 'checkpoint' if base else 'scratch',
+                        request.data.get('config') or {}, base, request.data.get('gpu_type', 'cpu-local'),
+                        request.data.get('name') or f'{d.name} — {"plan outlines" if goal["task"] == "semantic_segmentation" else "plan structure"}')
+    audit(request, 'training.create', j, status=j.status, goal=request.data.get('goal'))
+    return Response({'ready': True, 'job': _ser_job(j, full=True)}, status=201)
