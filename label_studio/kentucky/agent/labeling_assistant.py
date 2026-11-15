@@ -261,7 +261,8 @@ def propose_cv_from_graph(sheet, dataset, labels=('wall', 'door', 'window')) -> 
     return props
 
 
-def propose_from_model(sheet, dataset, model_version) -> list[Proposal]:
+def propose_from_model(sheet, dataset, model_version, labels=None) -> list[Proposal]:
+    """Model-in-the-loop proposals. ``labels`` limits them to the item types this model is chosen for."""
     from ..inference.predictors import predict
     from ..labeling import push_proposal_to_label_studio
 
@@ -271,6 +272,8 @@ def propose_from_model(sheet, dataset, model_version) -> list[Proposal]:
         from ..coords import clean_polygon
 
         for p in res['predictions']:
+            if labels is not None and p['label'] not in labels:
+                continue
             poly = clean_polygon(p.get('polygon'), sheet.width, sheet.height)
             if poly is None:
                 continue

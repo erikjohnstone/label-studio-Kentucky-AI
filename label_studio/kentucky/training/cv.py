@@ -445,10 +445,10 @@ def build_maskrcnn(catalog_id, num_classes, init):
     from torchvision.models.detection.backbone_utils import mobilenet_backbone
     from torchvision.models.detection.rpn import AnchorGenerator
 
-    if catalog_id == 'det-rtdetrv2-r18':
+    if catalog_id in ('det-rtdetrv2-r18', 'det-dfine-s'):
         from .rtdetr import RTDetrAdapter
 
-        return RTDetrAdapter(num_classes, pretrained=(init == 'pretrained'))
+        return RTDetrAdapter(num_classes, pretrained=(init == 'pretrained'), key=catalog_id)
     if catalog_id == 'inst-maskrcnn-mbv3':
         from functools import partial
 

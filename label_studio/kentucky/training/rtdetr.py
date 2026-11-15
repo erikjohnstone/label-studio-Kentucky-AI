@@ -1,4 +1,4 @@
-"""RT-DETRv2 (ResNet-18-vd) for finding items one by one on drawings. Django-free.
+"""DETR-family detectors (RT-DETRv2-R18, D-FINE-S) for finding items one by one on drawings. Django-free.
 
 Weights: ``PekingU/rtdetr_v2_r18vd`` (Apache-2.0, COCO-pretrained, pinned revision). The adapter makes the
 Hugging Face model behave like a torchvision detection model (``model(images, targets) -> losses`` in training,
@@ -15,16 +15,23 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-HF_ID = 'PekingU/rtdetr_v2_r18vd'
-HF_REVISION = '5650961749fa93567c0d46fc7f43ea4f9e914107'
-CONFIG = Path(__file__).with_name('configs') / 'rtdetr_v2_r18vd.json'  # vendored from the pinned revision (Apache-2.0)
+# DETR-family detectors with Apache-2.0 code and COCO-pretrained Apache-2.0 weights, pinned to exact revisions.
+# Configs are vendored from those revisions so inference rebuilds the architecture offline.
+SPECS = {
+    'det-rtdetrv2-r18': {'hf_id': 'PekingU/rtdetr_v2_r18vd', 'revision': '5650961749fa93567c0d46fc7f43ea4f9e914107',
+                         'config': 'rtdetr_v2_r18vd.json', 'cls': ('RTDetrV2Config', 'RTDetrV2ForObjectDetection')},
+    'det-dfine-s': {'hf_id': 'ustc-community/dfine-small-coco', 'revision': 'f79e65b5fbb33ceb9d3ebba042955d7410c608f8',
+                    'config': 'dfine_small_coco.json', 'cls': ('DFineConfig', 'DFineForObjectDetection')},
+}
+HF_ID, HF_REVISION = SPECS['det-rtdetrv2-r18']['hf_id'], SPECS['det-rtdetrv2-r18']['revision']
 MAX_DETECTIONS = 200
 
 
-def _config(num_labels: int):
-    from transformers import RTDetrV2Config
+def _config(num_labels: int, key: str = 'det-rtdetrv2-r18'):
+    import transformers
 
-    cfg = RTDetrV2Config.from_dict(json.loads(CONFIG.read_text()))
+    sp = SPECS[key]
+    cfg = getattr(transformers, sp['cls'][0]).from_dict(json.loads((Path(__file__).with_name('configs') / sp['config']).read_text()))
     cfg.num_labels = num_labels
     cfg.id2label = {i: f'class_{i}' for i in range(num_labels)}
     cfg.label2id = {v: k for k, v in cfg.id2label.items()}
@@ -37,16 +44,18 @@ def _box_cxcywh_to_xyxy(b):
 
 
 class RTDetrAdapter(nn.Module):
-    def __init__(self, num_classes: int, pretrained: bool):
-        """num_classes includes background (torchvision convention); RT-DETR itself has no background class."""
+    def __init__(self, num_classes: int, pretrained: bool, key: str = 'det-rtdetrv2-r18'):
+        """num_classes includes background (torchvision convention); DETR-family models have no background class."""
         super().__init__()
-        from transformers import RTDetrV2ForObjectDetection
+        import transformers
 
+        sp = SPECS[key]
+        model_cls = getattr(transformers, sp['cls'][1])
         k = num_classes - 1
         if pretrained:
-            self.net = RTDetrV2ForObjectDetection.from_pretrained(HF_ID, revision=HF_REVISION, config=_config(k), ignore_mismatched_sizes=True)
+            self.net = model_cls.from_pretrained(sp['hf_id'], revision=sp['revision'], config=_config(k, key), ignore_mismatched_sizes=True)
         else:
-            self.net = RTDetrV2ForObjectDetection(_config(k))
+            self.net = model_cls(_config(k, key))
 
     @staticmethod
     def _batch(images):

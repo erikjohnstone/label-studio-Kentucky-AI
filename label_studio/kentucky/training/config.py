@@ -21,6 +21,8 @@ DEFAULTS = {
                            'training_scale': 0.5, 'crop_size': 384, 'crops_per_sheet': 6, 'augment': ['flip'], 'score_threshold': 0.5},
     'det-rtdetrv2-r18': {'epochs': 30, 'batch_size': 4, 'lr': 1e-4, 'optimizer': 'adamw', 'weight_decay': 1e-4, 'scheduler': 'cosine',
                          'training_scale': 0.5, 'crop_size': 640, 'crops_per_sheet': 4, 'augment': ['flip'], 'score_threshold': 0.4},
+    'det-dfine-s': {'epochs': 30, 'batch_size': 4, 'lr': 1e-4, 'optimizer': 'adamw', 'weight_decay': 1e-4, 'scheduler': 'cosine',
+                    'training_scale': 0.5, 'crop_size': 640, 'crops_per_sheet': 4, 'augment': ['flip'], 'score_threshold': 0.4},
     'inst-maskrcnn-r50-v2': {'epochs': 24, 'batch_size': 2, 'lr': 1e-2, 'optimizer': 'sgd', 'weight_decay': 1e-4, 'scheduler': 'step',
                              'training_scale': 0.75, 'crop_size': 800, 'crops_per_sheet': 4, 'augment': ['flip'], 'score_threshold': 0.5},
     'gnn-sage-node': {'epochs': 150, 'batch_size': 4, 'lr': 5e-3, 'optimizer': 'adamw', 'weight_decay': 5e-4, 'scheduler': 'plateau',

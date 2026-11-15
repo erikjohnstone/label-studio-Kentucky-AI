@@ -14,12 +14,14 @@ from rest_framework.decorators import api_view
 from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
 
-from . import coords
+from . import catalog, coords
 from .agent import labeling_assistant as LA
 from .api import _get
 from .labeling import current_taxonomy, ensure_project, ensure_tasks
 from .models import CanonicalObject, ModelVersion, Proposal, Review, Sheet
 from .security import audit
+
+TA_NICE = {'wall': 'walls', 'door': 'doors', 'window': 'windows', 'room': 'rooms'}
 
 
 def _poly_px(r, W, H):
@@ -84,13 +86,25 @@ def _dedupe(sheet, user):
     return n
 
 
-def _suggest_model(sheet):
-    """The model that marks up new sheets: the org's newest ready item-outline model (instance models first — they give one
-    shape per item, which is what a contractor reviews), preferring one trained on this plan set."""
-    qs = ModelVersion.objects.filter(organization=sheet.organization, status='ready', model__task__in=['instance_segmentation', 'semantic_segmentation'])
-    ranked = sorted(qs.select_related('model', 'dataset_version'), key=lambda mv: (mv.model.task == 'instance_segmentation',
-                    mv.dataset_version_id is not None and mv.dataset_version.dataset_id == sheet.dataset_id, mv.created_at), reverse=True)
-    return ranked[0] if ranked else None
+def _suggest_plan(sheet):
+    """Pick, for each item type, the org's model that measured best on it (its own held-out test), so e.g. doors
+    come from a detector and walls from an outline model. Returns [(model version, [labels])], best first."""
+    from .agent import training_advisor as TA
+
+    qs = ModelVersion.objects.filter(organization=sheet.organization, status='ready',
+                                     model__task__in=['instance_segmentation', 'semantic_segmentation']).select_related('model', 'dataset_version')
+    best = {}
+    for mv in qs:
+        rc = TA.report_card(mv.metrics, mv.model.task)
+        for it in (rc or {}).get('items', []):
+            same = mv.dataset_version_id is not None and mv.dataset_version.dataset_id == sheet.dataset_id
+            key = (round(it['score'], 2), same, mv.created_at)
+            if it['score'] > 0 and (it['key'] not in best or key > best[it['key']][0]):
+                best[it['key']] = (key, mv)
+    plan = {}
+    for label, (_, mv) in best.items():
+        plan.setdefault(mv.id, (mv, []))[1].append(label)
+    return sorted(plan.values(), key=lambda x: -len(x[1]))
 
 
 @api_view(['GET'])
@@ -110,7 +124,7 @@ def sheet_review(request, pk):
     pend_by = dict(Proposal.objects.filter(dataset=s.dataset, kind=Proposal.Kind.CV_OBJECT, status='pending')
                    .values_list('sheet_id').annotate(n=Count('id')).values_list('sheet_id', 'n'))
     i = [x.id for x in sheets].index(s.id)
-    has_model = _suggest_model(s) is not None
+    has_model = bool(_suggest_plan(s))
     return Response({
         'sheet': {'id': s.id, 'name': s.name, 'width': s.width, 'height': s.height, 'image_url': f'/ka/files/sheet/{s.id}/image.png',
                   'has_vector': s.has_vector, 'labeling_status': s.labeling_status},
@@ -158,16 +172,23 @@ def sheet_decide(request, pk):
 def sheet_find_more(request, pk):
     """Ask the AI for suggestions on this sheet: the plan set's best trained model if there is one, otherwise the drawing's own geometry."""
     s = _get(Sheet, request, pk=pk)
-    mv = _suggest_model(s)
-    source = 'model' if mv else 'drawing'
+    plan = _suggest_plan(s)
+    source = 'model' if plan else 'drawing'
+    props, used = [], []
     try:
-        props = LA.propose_from_model(s, s.dataset, mv) if mv else (LA.propose_cv_from_graph(s, s.dataset) if s.has_vector else [])
+        if plan:
+            for mv, labels in plan:
+                props += LA.propose_from_model(s, s.dataset, mv, labels=set(labels))
+                arch = (catalog.get(mv.model.catalog_id) or {}).get('name', mv.model.catalog_id).replace(' (pretrained)', '')
+                used.append(f'{" & ".join(TA_NICE.get(x, x) for x in sorted(labels))} by {arch} v{mv.version}')
+        elif s.has_vector:
+            props = LA.propose_cv_from_graph(s, s.dataset)
     except Exception as e:  # inference problems are reported, never hidden
         raise ValidationError({'detail': f'Could not read this sheet: {e}'})
     dup = _dedupe(s, request.user)
-    audit(request, 'review.find_more', s, created=len(props), duplicates=dup, source=source)
+    audit(request, 'review.find_more', s, created=len(props), duplicates=dup, source=source, models=[mv.id for mv, _ in plan])
     return Response({'created': len(props) - dup, 'duplicates': dup, 'source': source,
-                     'model': (f'your model v{mv.version}' + (f' from {mv.dataset_version.dataset.name}' if mv.dataset_version_id and mv.dataset_version.dataset_id != s.dataset_id else '')) if mv else None})
+                     'model': ('your models — ' + '; '.join(used)) if used else None})
 
 
 @api_view(['POST'])

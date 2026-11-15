@@ -90,6 +90,22 @@ CATALOG = [
         }, SCRATCH],
     },
     {
+        'id': 'det-dfine-s', 'task': 'instance_segmentation', 'family': 'cv', 'name': 'D-FINE-S (pretrained)',
+        'architecture': 'transformers.DFineForObjectDetection (HGNetV2-S backbone, fine-grained box refinement); outlines are boxes',
+        **HF, 'version': 'transformers>=4.52',
+        'description': 'DETR-family detector with finer box localisation than RT-DETR at a smaller size (10M parameters). For doors, '
+                       'windows, fixtures and devices. Gives boxes.',
+        'gpu_recommended': 'T4 / A10G (CPU ok for small sets)', 'cpu_trainable': True,
+        'inits': [{
+            'id': 'pretrained', 'label': 'D-FINE-S COCO (ustc-community, Apache-2.0)', 'hf_id': 'ustc-community/dfine-small-coco',
+            'checkpoint_license': 'Apache-2.0 (model card)', 'commercial_use': True, 'commercially_deployable': True,
+            'fine_tuning_allowed': True, 'redistribution': 'allowed with license notice', 'hosting_restrictions': 'none',
+            'attribution': 'D-FINE authors (Apache-2.0); COCO-only pretraining (the Objects365 variants are excluded pending review)',
+            'checksum': None, 'revision': 'f79e65b5fbb33ceb9d3ebba042955d7410c608f8', 'source': 'https://huggingface.co/ustc-community/dfine-small-coco',
+            'note': 'Pinned revision; config vendored in training/configs.',
+        }, SCRATCH],
+    },
+    {
         'id': 'inst-maskrcnn-mbv3', 'task': 'instance_segmentation', 'family': 'cv', 'name': 'Mask R-CNN MobileNetV3-FPN',
         'architecture': 'torchvision.models.detection.MaskRCNN + mobilenet_v3_large FPN backbone', **TORCHVISION, 'version': 'torchvision 0.29',
         'description': 'Instance segmentation (doors, windows, fixtures, devices) with boxes + masks. CPU-trainable at small sizes.',

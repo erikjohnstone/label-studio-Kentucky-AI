@@ -36,7 +36,7 @@ DEFAULT_PRICING = {
 # Rough CPU seconds per (epoch x item) on the reference 4-core dev machine, measured from local runs
 # (see docs/kentucky/TEST_RESULTS.md). Used only to produce an estimate RANGE.
 CPU_SECONDS_PER_EPOCH_ITEM = {
-    'seg-lraspp-mbv3': 1.2, 'seg-dinov2-s': 2.5, 'seg-segformer-b0': 1.5, 'inst-maskrcnn-mbv3': 3.5, 'det-rtdetrv2-r18': 6.0, 'inst-maskrcnn-r50-v2': 25.0,
+    'seg-lraspp-mbv3': 1.2, 'seg-dinov2-s': 2.5, 'seg-segformer-b0': 1.5, 'inst-maskrcnn-mbv3': 3.5, 'det-rtdetrv2-r18': 6.0, 'det-dfine-s': 5.0, 'inst-maskrcnn-r50-v2': 25.0,
     'gnn-sage-node': 0.02, 'gnn-gat-node': 0.05, 'gnn-gps-node': 0.12, 'gnn-gcn-node': 0.02, 'gnn-sage-edge': 0.04,
 }
 

@@ -55,9 +55,20 @@ def upload_plan(ds, user, seed, fmt='pdf', rotate=0, group=None, scanned_skew=0.
     return plan, doc, sheets[0]
 
 
-def plan_to_image_px(plan, sheet, fmt):
-    """Mapping from synthetic plan coordinates (pt, y-down) into the sheet image."""
+def plan_to_image_px(plan, sheet, fmt, skew_deg=0.0):
+    """Mapping from synthetic plan coordinates (pt, y-down) into the sheet image. ``skew_deg`` matches
+    ``synthetic.to_raster(..., skew_deg=...)`` (PIL rotates counter-clockwise about the image centre)."""
     M = np.asarray(sheet.source_to_image, dtype=float)
+    if fmt not in ('pdf', 'dxf') and skew_deg:
+        th = np.radians(skew_deg)
+        cx, cy = plan.width, plan.height  # centre of the 2 px/pt raster
+
+        def rot(pts):
+            a = np.asarray(pts, dtype=float) * 2.0
+            dx, dy = a[:, 0] - cx, a[:, 1] - cy
+            return np.stack([cx + dx * np.cos(th) + dy * np.sin(th), cy - dx * np.sin(th) + dy * np.cos(th)], 1)
+
+        return rot
     if fmt == 'pdf':
         return lambda pts: coords.apply(M, pts)  # plan space == unrotated top-left PDF source space
     if fmt == 'dxf':
@@ -66,11 +77,11 @@ def plan_to_image_px(plan, sheet, fmt):
     return lambda pts: np.asarray(pts, dtype=float) * 2.0  # raster rendered at 2 px/pt (skew ignored)
 
 
-def simulate_cv_annotation(sheet, plan, fmt, user, classes=('wall', 'door', 'window'), drop_every=0):
+def simulate_cv_annotation(sheet, plan, fmt, user, classes=('wall', 'door', 'window'), drop_every=0, skew_deg=0.0):
     """Create a real LS annotation with polygon results for each GT object."""
     from tasks.models import Annotation
 
-    to_px = plan_to_image_px(plan, sheet, fmt)
+    to_px = plan_to_image_px(plan, sheet, fmt, skew_deg)
     W, H = sheet.width, sheet.height
     result = []
     for k, (oid, o) in enumerate(plan.objects.items()):
