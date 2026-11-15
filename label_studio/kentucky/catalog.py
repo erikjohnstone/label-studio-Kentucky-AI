@@ -120,6 +120,14 @@ CATALOG = [
         'gpu_recommended': 'none (CPU ok)', 'cpu_trainable': True, 'inits': [SCRATCH],
     },
     {
+        'id': 'gnn-gps-node', 'task': 'node_classification', 'family': 'gnn', 'name': 'Graph transformer (GPS + GINE)',
+        'architecture': 'torch_geometric GPSConv(GINEConv with edge features, multi-head global attention) x3 + MLP', **PYG, 'version': 'torch_geometric 2.8',
+        'description': 'Each line sees both its touching neighbours (with how they touch, cross or run parallel) and every other line '
+                       'on the sheet through attention. Recommended by the base-model research for CAD symbol spotting. No public '
+                       'pretrained checkpoint is licensed for commercial use, so it trains from zero or from your versions.',
+        'gpu_recommended': 'none (CPU ok)', 'cpu_trainable': True, 'inits': [SCRATCH],
+    },
+    {
         'id': 'gnn-gcn-node', 'task': 'node_classification', 'family': 'gnn', 'name': 'GCN node classifier',
         'architecture': 'torch_geometric.nn.GCNConv x3 + MLP head', **PYG, 'version': 'torch_geometric 2.8',
         'description': 'Simple spectral baseline.', 'gpu_recommended': 'none (CPU ok)', 'cpu_trainable': True, 'inits': [SCRATCH],

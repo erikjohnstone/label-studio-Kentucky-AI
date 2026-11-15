@@ -16,7 +16,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch_geometric.loader import DataLoader
-from torch_geometric.nn import GATv2Conv, GCNConv, SAGEConv
+from torch_geometric.nn import GATv2Conv, GCNConv, GINEConv, GPSConv, SAGEConv
 
 from . import metrics as M
 from .cv import _maybe_fault, make_optimizer, make_scheduler
@@ -31,7 +31,13 @@ class NodeGNN(nn.Module):
         self.convs = nn.ModuleList()
         self.norms = nn.ModuleList()
         for _ in range(layers):
-            if kind == 'gat':
+            if kind == 'gps':
+                # graph transformer: local GINE message passing (uses touch / cross / parallel edge geometry)
+                # + global attention across the whole sheet, so a line can "see" distant context (room, wall run)
+                mlp = nn.Sequential(nn.Linear(hidden, hidden), nn.ReLU(), nn.Linear(hidden, hidden))
+                self.convs.append(GPSConv(hidden, GINEConv(mlp, edge_dim=edge_dim), heads=heads, dropout=dropout,
+                                          norm='layer_norm', attn_type='multihead'))
+            elif kind == 'gat':
                 self.convs.append(GATv2Conv(hidden, hidden // heads, heads=heads, edge_dim=edge_dim))
             elif kind == 'gcn':
                 self.convs.append(GCNConv(hidden, hidden))
@@ -41,15 +47,18 @@ class NodeGNN(nn.Module):
         self.dropout = dropout
         self.head = nn.Sequential(nn.Linear(hidden, hidden), nn.ReLU(), nn.Linear(hidden, out_dim))
 
-    def encode(self, x, edge_index, edge_attr=None):
+    def encode(self, x, edge_index, edge_attr=None, batch=None):
         h = F.relu(self.inp(x))
         for conv, norm in zip(self.convs, self.norms):
+            if self.kind == 'gps':
+                h = conv(h, edge_index, batch, edge_attr=edge_attr)  # GPS layers carry their own residuals + norms
+                continue
             hn = conv(h, edge_index, edge_attr) if self.kind == 'gat' else conv(h, edge_index)
             h = norm(h + F.dropout(F.relu(hn), self.dropout, self.training))
         return h
 
     def forward(self, data):
-        return self.head(self.encode(data.x, data.edge_index, data.edge_attr))
+        return self.head(self.encode(data.x, data.edge_index, data.edge_attr, getattr(data, 'batch', None)))
 
 
 class EdgeGNN(nn.Module):
@@ -64,7 +73,7 @@ class EdgeGNN(nn.Module):
         return self.edge_mlp(torch.cat([h[s], h[d], (h[s] - h[d]).abs(), data.edge_attr], dim=1))
 
 
-KIND = {'gnn-sage-node': 'sage', 'gnn-gat-node': 'gat', 'gnn-gcn-node': 'gcn'}
+KIND = {'gnn-sage-node': 'sage', 'gnn-gat-node': 'gat', 'gnn-gcn-node': 'gcn', 'gnn-gps-node': 'gps'}
 
 
 def build(catalog_id, meta, n_out, cfg):

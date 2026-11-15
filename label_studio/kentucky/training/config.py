@@ -27,6 +27,8 @@ DEFAULTS = {
                       'hidden': 96, 'layers': 3, 'dropout': 0.2, 'class_weighting': 'sqrt_inverse'},
     'gnn-gat-node': {'epochs': 150, 'batch_size': 4, 'lr': 3e-3, 'optimizer': 'adamw', 'weight_decay': 5e-4, 'scheduler': 'plateau',
                      'hidden': 64, 'layers': 3, 'heads': 4, 'dropout': 0.2, 'class_weighting': 'sqrt_inverse'},
+    'gnn-gps-node': {'epochs': 150, 'batch_size': 4, 'lr': 1e-3, 'optimizer': 'adamw', 'weight_decay': 1e-4, 'scheduler': 'plateau',
+                     'hidden': 64, 'layers': 3, 'heads': 4, 'dropout': 0.1, 'class_weighting': 'sqrt_inverse'},
     'gnn-gcn-node': {'epochs': 150, 'batch_size': 4, 'lr': 5e-3, 'optimizer': 'adamw', 'weight_decay': 5e-4, 'scheduler': 'plateau',
                      'hidden': 96, 'layers': 3, 'dropout': 0.2, 'class_weighting': 'sqrt_inverse'},
     'gnn-sage-edge': {'epochs': 150, 'batch_size': 4, 'lr': 5e-3, 'optimizer': 'adamw', 'weight_decay': 5e-4, 'scheduler': 'plateau',
