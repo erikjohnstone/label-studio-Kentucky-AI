@@ -1,0 +1,149 @@
+"""Model catalog: approved training templates with per-model license records.
+
+Rules enforced here (and in ``validate_selection``):
+* Implementation (code) license and checkpoint (weights) license are recorded separately.
+* An init option whose checkpoint is not cleared for commercial use is marked
+  ``commercially_deployable: False``: it can be used for internal evaluation, but a model trained
+  from it cannot be deployed until the checkpoint is cleared (``KA_CLEARED_CHECKPOINTS``).
+* Only approved templates run; customers cannot upload executable training code.
+
+Kentucky AI pretrained models: the repository audit (docs/kentucky/LABEL_STUDIO_AUDIT.md, code-reuse
+map) found NO Kentucky AI checkpoints in the available repositories, so none are listed. When
+Kentucky AI checkpoints are published to the registry with ``organization=None``-equivalent
+platform scope, they appear under ``source: kentucky``.
+"""
+
+from __future__ import annotations
+
+from django.conf import settings
+
+TORCHVISION = {'implementation': 'torchvision', 'implementation_license': 'BSD-3-Clause',
+               'source': 'https://github.com/pytorch/vision'}
+PYG = {'implementation': 'PyTorch Geometric', 'implementation_license': 'MIT', 'source': 'https://github.com/pyg-team/pytorch_geometric'}
+HF = {'implementation': 'Hugging Face Transformers', 'implementation_license': 'Apache-2.0',
+      'source': 'https://github.com/huggingface/transformers'}
+
+SCRATCH = {
+    'id': 'scratch', 'label': 'Random initialization (train from scratch)', 'checkpoint_license': 'n/a (new weights)',
+    'commercial_use': True, 'commercially_deployable': True, 'fine_tuning_allowed': True, 'redistribution': 'customer-owned weights',
+    'hosting_restrictions': 'none', 'attribution': 'none', 'checksum': None, 'revision': None,
+    'note': 'Requires substantially more labeled data and compute than fine-tuning.',
+}
+
+CATALOG = [
+    {
+        'id': 'seg-lraspp-mbv3', 'task': 'semantic_segmentation', 'family': 'cv', 'name': 'LR-ASPP MobileNetV3-Large',
+        'architecture': 'torchvision.models.segmentation.lraspp_mobilenet_v3_large', **TORCHVISION, 'version': 'torchvision 0.29',
+        'description': 'Lightweight semantic segmentation; fast on CPU, good baseline for walls / finishes / rooms.',
+        'gpu_recommended': 'none (CPU ok) / T4', 'cpu_trainable': True,
+        'inits': [SCRATCH, {
+            'id': 'pretrained', 'label': 'torchvision COCO (VOC labels) checkpoint',
+            'weights_enum': 'LRASPP_MobileNet_V3_Large_Weights.COCO_WITH_VOC_LABELS_V1',
+            'checkpoint_license': 'Distributed with torchvision (BSD-3-Clause); trained on COCO images whose licenses vary (Flickr terms)',
+            'commercial_use': 'review_required', 'commercially_deployable': False, 'fine_tuning_allowed': True,
+            'redistribution': 'review_required', 'hosting_restrictions': 'review_required',
+            'attribution': 'torchvision, COCO', 'checksum': None, 'revision': 'v1',  # recorded from the hash-suffixed torchvision filename at download time
+            'note': 'Downloaded from download.pytorch.org at train time; legal review pending, therefore not deployable.',
+        }],
+    },
+    {
+        'id': 'seg-segformer-b0', 'task': 'semantic_segmentation', 'family': 'cv', 'name': 'SegFormer-B0 (architecture)',
+        'architecture': 'transformers.SegformerForSemanticSegmentation (mit-b0 config)', **HF, 'version': 'transformers>=4.40',
+        'description': 'Transformer segmentation. Scratch init only: NVIDIA SegFormer checkpoints are released under the '
+                       'NVIDIA Source Code License (non-commercial) and are EXCLUDED from the commercial catalog.',
+        'gpu_recommended': 'T4 / A10G', 'cpu_trainable': True,
+        'inits': [SCRATCH],
+        'excluded_checkpoints': [{'id': 'nvidia/mit-b0', 'reason': 'NVIDIA Source Code License - non-commercial'}],
+    },
+    {
+        'id': 'inst-maskrcnn-mbv3', 'task': 'instance_segmentation', 'family': 'cv', 'name': 'Mask R-CNN MobileNetV3-FPN',
+        'architecture': 'torchvision.models.detection.MaskRCNN + mobilenet_v3_large FPN backbone', **TORCHVISION, 'version': 'torchvision 0.29',
+        'description': 'Instance segmentation (doors, windows, fixtures, devices) with boxes + masks. CPU-trainable at small sizes.',
+        'gpu_recommended': 'T4 / A10G', 'cpu_trainable': True, 'inits': [SCRATCH],
+    },
+    {
+        'id': 'inst-maskrcnn-r50-v2', 'task': 'instance_segmentation', 'family': 'cv', 'name': 'Mask R-CNN ResNet-50-FPN v2',
+        'architecture': 'torchvision.models.detection.maskrcnn_resnet50_fpn_v2', **TORCHVISION, 'version': 'torchvision 0.29',
+        'description': 'Higher-capacity instance segmentation; GPU recommended.', 'gpu_recommended': 'A10G / A100', 'cpu_trainable': False,
+        'inits': [SCRATCH, {
+            'id': 'pretrained', 'label': 'torchvision COCO checkpoint', 'weights_enum': 'MaskRCNN_ResNet50_FPN_V2_Weights.COCO_V1',
+            'checkpoint_license': 'Distributed with torchvision (BSD-3-Clause); COCO-trained', 'commercial_use': 'review_required',
+            'commercially_deployable': False, 'fine_tuning_allowed': True, 'redistribution': 'review_required',
+            'hosting_restrictions': 'review_required', 'attribution': 'torchvision, COCO', 'checksum': None, 'revision': 'COCO_V1',
+            'note': 'Legal review pending.',
+        }],
+    },
+    {
+        'id': 'gnn-sage-node', 'task': 'node_classification', 'family': 'gnn', 'name': 'GraphSAGE node classifier',
+        'architecture': 'torch_geometric.nn.SAGEConv x3 + MLP head', **PYG, 'version': 'torch_geometric 2.8',
+        'description': 'Classifies vector primitives (wall / door / window / room tag ...) from geometry + topology.',
+        'gpu_recommended': 'none (CPU ok)', 'cpu_trainable': True, 'inits': [SCRATCH],
+    },
+    {
+        'id': 'gnn-gat-node', 'task': 'node_classification', 'family': 'gnn', 'name': 'GATv2 node classifier (edge-aware)',
+        'architecture': 'torch_geometric.nn.GATv2Conv(edge_dim) x3 + MLP head', **PYG, 'version': 'torch_geometric 2.8',
+        'description': 'Attention over neighbours using candidate-edge features (touch / cross / parallel / near).',
+        'gpu_recommended': 'none (CPU ok)', 'cpu_trainable': True, 'inits': [SCRATCH],
+    },
+    {
+        'id': 'gnn-gcn-node', 'task': 'node_classification', 'family': 'gnn', 'name': 'GCN node classifier',
+        'architecture': 'torch_geometric.nn.GCNConv x3 + MLP head', **PYG, 'version': 'torch_geometric 2.8',
+        'description': 'Simple spectral baseline.', 'gpu_recommended': 'none (CPU ok)', 'cpu_trainable': True, 'inits': [SCRATCH],
+    },
+    {
+        'id': 'gnn-sage-edge', 'task': 'edge_classification', 'family': 'gnn', 'name': 'GraphSAGE relation classifier',
+        'architecture': 'SAGEConv encoder + MLP([h_u, h_v, |h_u-h_v|, edge_attr])', **PYG, 'version': 'torch_geometric 2.8',
+        'description': 'Classifies candidate edges into relations (same_object, connects_to, hosted_by ... / none).',
+        'gpu_recommended': 'none (CPU ok)', 'cpu_trainable': True, 'inits': [SCRATCH],
+    },
+]
+
+# Every catalog model can also be initialized from one of the organization's own registered model
+# versions of the same catalog id ("checkpoint" init = fine-tuning / continued training).
+CHECKPOINT_INIT = {
+    'id': 'checkpoint', 'label': 'Your registered model version (fine-tune / resume)', 'checkpoint_license': 'customer-owned',
+    'commercial_use': 'inherits', 'commercially_deployable': 'inherits', 'fine_tuning_allowed': True,
+}
+
+SEGMENTATION_ASSIST = [{
+    'id': 'sam2', 'name': 'SAM 2 (Segment Anything 2)', 'implementation_license': 'Apache-2.0', 'checkpoint_license': 'Apache-2.0',
+    'commercial_use': True, 'status': 'integration point - weights not bundled; enable with KA_SAM2_CHECKPOINT',
+    'source': 'https://github.com/facebookresearch/sam2',
+}]
+
+
+def get(catalog_id: str) -> dict | None:
+    return next((c for c in CATALOG if c['id'] == catalog_id), None)
+
+
+def init_option(entry: dict, init_id: str) -> dict | None:
+    if init_id == 'checkpoint':
+        return CHECKPOINT_INIT
+    return next((i for i in entry['inits'] if i['id'] == init_id), None)
+
+
+def deployable(catalog_id: str, init_id: str, base_license: dict | None = None) -> tuple[bool, str]:
+    entry = get(catalog_id)
+    if entry is None:
+        return False, 'unknown catalog model'
+    opt = init_option(entry, init_id)
+    if opt is None:
+        return False, 'unknown init'
+    if init_id == 'checkpoint':
+        if base_license is None:
+            return False, 'base checkpoint license unknown'
+        return bool(base_license.get('commercially_deployable')), base_license.get('reason', 'inherited from base checkpoint')
+    cleared = set(getattr(settings, 'KA_CLEARED_CHECKPOINTS', []) or [])
+    if opt.get('commercially_deployable') is True or f'{catalog_id}:{init_id}' in cleared:
+        return True, 'cleared'
+    return False, f'checkpoint license {opt.get("commercial_use")}: not cleared for commercial deployment'
+
+
+def public_catalog() -> dict:
+    return {
+        'kentucky_models': [],
+        'kentucky_models_note': 'No Kentucky AI checkpoints were found in the audited repositories; none are offered.',
+        'open_models': CATALOG,
+        'checkpoint_init': CHECKPOINT_INIT,
+        'segmentation_assist': SEGMENTATION_ASSIST,
+    }

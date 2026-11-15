@@ -263,6 +263,7 @@ INSTALLED_APPS = [
     'ml_model_providers',
     'jwt_auth',
     'session_policy',
+    'kentucky',  # Kentucky AI construction ML platform (label_studio/kentucky)
 ]
 
 MIDDLEWARE = [
@@ -760,7 +761,7 @@ DATA_UNDEFINED_NAME = '$undefined$'
 LICENSE = {}
 VERSIONS = {}
 VERSION_EDITION = 'Community'
-LATEST_VERSION_CHECK = get_bool_env('LATEST_VERSION_CHECK', True)
+LATEST_VERSION_CHECK = get_bool_env('LATEST_VERSION_CHECK', False)  # Kentucky AI: no outbound version check by default
 VERSIONS_CHECK_TIME = 0
 ALLOW_ORGANIZATION_WEBHOOKS = get_bool_env('ALLOW_ORGANIZATION_WEBHOOKS', False)
 CONVERTER_DOWNLOAD_RESOURCES = get_bool_env('CONVERTER_DOWNLOAD_RESOURCES', True)
@@ -909,7 +910,7 @@ FEATURE_FLAGS_OFFLINE = get_bool_env('FEATURE_FLAGS_OFFLINE', True)
 FEATURE_FLAGS_DEFAULT_VALUE = False
 
 # Whether to send analytics telemetry data. Fall back to old lowercase name for legacy compatibility.
-COLLECT_ANALYTICS = get_bool_env('COLLECT_ANALYTICS', get_bool_env('collect_analytics', True))
+COLLECT_ANALYTICS = get_bool_env('COLLECT_ANALYTICS', get_bool_env('collect_analytics', False))  # Kentucky AI: off by default
 
 # Strip harmful content from SVG files by default
 SVG_SECURITY_CLEANUP = get_bool_env('SVG_SECURITY_CLEANUP', False)
