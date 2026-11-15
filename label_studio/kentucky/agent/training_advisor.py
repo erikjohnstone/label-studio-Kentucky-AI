@@ -152,7 +152,7 @@ def report_card(final_metrics: dict, task: str) -> dict | None:
     mean = sum(i['score'] for i in items) / len(items)
     grade = 'A' if mean >= 0.9 else 'B' if mean >= 0.8 else 'C' if mean >= 0.65 else 'D' if mean >= 0.5 else 'Not ready'
     weak = [i['name'] for i in sorted(items, key=lambda x: x['score']) if i['level'] in ('weak', 'fair')]
-    advice = (f'Mark up more {", ".join(weak[:2])} on a few more plans, then teach it again.' if weak
+    advice = (f'Label more {" and ".join(weak[:2])} on a few more plans, then train again.' if weak
               else 'Looks solid. Try it on a plan it has never seen before turning it on.')
     return {'grade': grade, 'score': round(mean, 3), 'items': sorted(items, key=lambda x: -x['score']), 'advice': advice,
             'checked_on': 'plans it never saw while learning' if split_name == 'test' else 'a held-back check set',

@@ -62,7 +62,8 @@ def _ser_dataset(d: Dataset):
             'objects': d.canonical_objects.filter(deleted=False).count(),
             'approved': d.canonical_objects.filter(deleted=False, review_status='approved').count(),
             'taxonomy_version': tax.version if tax else None, 'allow_ka_model_training': d.allow_ka_model_training,
-            'labeled_sheets': d.sheets.exclude(labeling_status='unlabeled').count()}
+            'labeled_sheets': d.sheets.exclude(labeling_status='unlabeled').count(),
+            'cover': (lambda s0: f'/ka/files/sheet/{s0.id}/image.png' if s0 else None)(d.sheets.order_by('id').first())}
 
 
 def _ser_sheet(s: Sheet):
